@@ -109,9 +109,20 @@ export async function checkDbConnection(): Promise<{
     };
   } catch (err: any) {
     console.warn('[VPS Postgres] Connection check failed:', err.message);
+    let detailedError = err.message || 'Не удалось подключиться к базе данных';
+    if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout')) {
+      detailedError = 'Таймаут подключения (порт 5432 закрыт в фаерволе VPS или PostgreSQL не слушает 0.0.0.0)';
+    } else if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
+      detailedError = 'Соединение отклонено (PostgreSQL не запущен или listen_addresses не настроен на * в postgresql.conf)';
+    } else if (err.code === '28P01' || err.message?.includes('password authentication failed')) {
+      detailedError = 'Неверный логин или пароль пользователя umami_user';
+    } else if (err.code === '28000' || err.message?.includes('no pg_hba.conf entry')) {
+      detailedError = 'Доступ запрещен в pg_hba.conf (нужно добавить host all all 0.0.0.0/0 md5)';
+    }
+
     lastConnectionStatus = {
       connected: false,
-      error: err.message,
+      error: detailedError,
       lastChecked: new Date().toISOString(),
       host: '2.26.86.122',
       database: 'umami_db'

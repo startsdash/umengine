@@ -18,7 +18,11 @@ import {
    Zap,
    Globe,
    Database,
-   Server
+   Server,
+   RefreshCw,
+   AlertCircle,
+   Terminal,
+   Copy
  } from 'lucide-react';
 
 interface HeaderProps {
@@ -36,6 +40,7 @@ interface HeaderProps {
     tables?: string[];
     error?: string;
   };
+  onRefreshDb?: () => Promise<void> | void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,10 +51,42 @@ export const Header: React.FC<HeaderProps> = ({
   setPortions,
   onReset,
   onExport,
-  dbStatus
+  dbStatus,
+  onRefreshDb
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDbInfo, setShowDbInfo] = useState(false);
+  const [isRefreshingDb, setIsRefreshingDb] = useState(false);
+  const [showVpsGuide, setShowVpsGuide] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState(false);
+
+  const handleManualRefreshDb = async () => {
+    if (!onRefreshDb || isRefreshingDb) return;
+    setIsRefreshingDb(true);
+    try {
+      await onRefreshDb();
+    } finally {
+      setTimeout(() => setIsRefreshingDb(false), 500);
+    }
+  };
+
+  const vpsSetupScript = `# 1. Открыть порт в фаерволе Ubuntu
+sudo ufw allow 5432/tcp
+
+# 2. Разрешить удаленные подключения в postgresql.conf
+sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/*/main/postgresql.conf
+
+# 3. Разрешить доступ пользователю umami_user в pg_hba.conf
+echo "host umami_db umami_user 0.0.0.0/0 scram-sha-256" | sudo tee -a /etc/postgresql/*/main/pg_hba.conf
+
+# 4. Перезапустить PostgreSQL
+sudo systemctl restart postgresql`;
+
+  const copyScriptToClipboard = () => {
+    navigator.clipboard.writeText(vpsSetupScript);
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string; key: string }[] = [
     { id: 'constructor', label: 'Конструктор', icon: <FlaskConical className="w-3.5 h-3.5" />, key: '1' },
@@ -169,19 +206,29 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* DB Info Dropdown (Constrained for mobile screen width) */}
               {showDbInfo && (
-                <div className="fixed sm:absolute right-3 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-24px)] sm:w-72 max-w-sm p-3.5 rounded-xl bg-[#0E1118] border border-white/[0.12] shadow-2xl z-50 space-y-2.5 animate-in fade-in-50 zoom-in-95">
+                <div className="fixed sm:absolute right-3 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-24px)] sm:w-80 max-w-md p-3.5 rounded-xl bg-[#0E1118] border border-white/[0.12] shadow-2xl z-50 space-y-3 animate-in fade-in-50 zoom-in-95 max-h-[85vh] overflow-y-auto">
                   <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
                     <div className="flex items-center space-x-2">
                       <Server className="w-4 h-4 text-emerald-400" />
                       <span className="text-xs font-semibold text-white">PostgreSQL VPS</span>
                     </div>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                      dbStatus?.connected 
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                        : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                    }`}>
-                      {dbStatus?.connected ? 'Онлайн' : 'Подключение...'}
-                    </span>
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={handleManualRefreshDb}
+                        disabled={isRefreshingDb}
+                        className="p-1 rounded hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors"
+                        title="Проверить подключение заново"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isRefreshingDb ? 'animate-spin text-emerald-400' : ''}`} />
+                      </button>
+                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                        dbStatus?.connected 
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
+                        {dbStatus?.connected ? 'Онлайн' : 'Не подключен'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5 text-[11px] font-mono">
@@ -197,12 +244,63 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Синхронизация:</span>
                       <span className="text-emerald-400">Рецепты, Кладовая, Статьи</span>
                     </div>
-                    {dbStatus?.tables && (
-                      <div className="pt-1 text-[10px] text-zinc-500 break-words">
-                        Таблицы ({dbStatus.tables.length}): {dbStatus.tables.join(', ')}
+                    {dbStatus?.tables && dbStatus.tables.length > 0 && (
+                      <div className="pt-1 text-[10px] text-zinc-400 border-t border-white/[0.04]">
+                        Таблицы: <span className="text-emerald-300 font-mono">{dbStatus.tables.join(', ')}</span>
                       </div>
                     )}
                   </div>
+
+                  {/* Error diagnosis block if not connected */}
+                  {!dbStatus?.connected && (
+                    <div className="space-y-2 pt-1 border-t border-white/[0.06]">
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-start space-x-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-amber-200/90 leading-tight">
+                          <div className="font-semibold text-amber-300 mb-0.5">Причина:</div>
+                          {dbStatus?.error || 'Сервер Vercel не может достучаться до порта 5432 на VPS.'}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowVpsGuide(!showVpsGuide)}
+                        className="w-full py-1 px-2 rounded bg-white/[0.05] hover:bg-white/[0.09] text-[10px] font-mono text-zinc-300 flex items-center justify-between transition-colors border border-white/[0.08]"
+                      >
+                        <span className="flex items-center space-x-1.5">
+                          <Terminal className="w-3 h-3 text-emerald-400" />
+                          <span>Инструкция: как открыть доступ на VPS</span>
+                        </span>
+                        <span className="text-zinc-500">{showVpsGuide ? '▲' : '▼'}</span>
+                      </button>
+
+                      {showVpsGuide && (
+                        <div className="p-2.5 rounded-lg bg-black/60 border border-white/[0.08] space-y-2 text-[10px] font-mono animate-in fade-in-50">
+                          <div className="flex justify-between items-center text-zinc-400 pb-1 border-b border-white/[0.06]">
+                            <span>Выполните на вашем сервере по SSH:</span>
+                            <button
+                              onClick={copyScriptToClipboard}
+                              className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300"
+                            >
+                              <Copy className="w-2.5 h-2.5" />
+                              <span>{copiedCmd ? 'Скопировано!' : 'Скопировать'}</span>
+                            </button>
+                          </div>
+                          <pre className="text-emerald-300/90 overflow-x-auto text-[10px] leading-relaxed whitespace-pre font-mono p-1 bg-black/40 rounded">
+                            {vpsSetupScript}
+                          </pre>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleManualRefreshDb}
+                        disabled={isRefreshingDb}
+                        className="w-full py-1.5 px-3 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center justify-center space-x-2 transition-all active:scale-[0.98]"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isRefreshingDb ? 'animate-spin' : ''}`} />
+                        <span>{isRefreshingDb ? 'Проверка соединения...' : 'Повторить подключение'}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -82,9 +82,12 @@ export const App: React.FC = () => {
       const pantryRes = await fetch('/api/db/pantry');
       if (pantryRes.ok) {
         const pantryData = await pantryRes.json();
-        if (Array.isArray(pantryData.pantry) && pantryData.pantry.length > 0) {
-          setPantryList(pantryData.pantry);
-          localStorage.setItem('umami_pantry_v1', JSON.stringify(pantryData.pantry));
+        const items = pantryData.pantryItems || pantryData.pantry;
+        if (Array.isArray(items) && items.length > 0) {
+          setPantryList(prev => prev.map(p => {
+            const found = items.find((it: any) => it.id === p.id);
+            return found !== undefined ? { ...p, inPantry: Boolean(found.inPantry ?? found.in_pantry) } : p;
+          }));
         }
       }
     } catch (err) {
@@ -105,7 +108,9 @@ export const App: React.FC = () => {
       fetch('/api/db/pantry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pantry: pantryList })
+        body: JSON.stringify({ 
+          items: pantryList.map(p => ({ id: p.id, inPantry: p.inPantry })) 
+        })
       }).catch(err => {
         console.warn('Failed to sync pantry to VPS DB:', err);
       });
@@ -253,6 +258,7 @@ export const App: React.FC = () => {
         onReset={handleReset}
         onExport={() => setShowExportModal(true)}
         dbStatus={dbStatus}
+        onRefreshDb={fetchDbData}
       />
 
       {/* Main Container */}
