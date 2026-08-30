@@ -153,7 +153,7 @@ export const App: React.FC = () => {
   // Delete Custom Sauce from VPS PostgreSQL
   const handleDeleteCustomSauce = async (id: string) => {
     try {
-      const res = await fetch(`/api/db/sauces/${id}`, {
+      const res = await fetch(`/api/db/sauces?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
       if (res.ok) {
