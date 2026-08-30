@@ -134,11 +134,11 @@ export const PresetLibrary: React.FC<PresetLibraryProps> = ({
                     )}
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                  <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
                     {onDeleteCustomSauce && (
                       <button
                         onClick={() => onDeleteCustomSauce(sauce.id)}
-                        className="flex items-center space-x-1 text-xs text-zinc-500 hover:text-rose-400 transition-colors p-1"
+                        className="flex items-center space-x-1 text-xs text-zinc-500 hover:text-rose-400 active:text-rose-300 transition-colors p-1.5 rounded-md hover:bg-rose-500/10 touch-manipulation"
                         title="Удалить из PostgreSQL"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -149,10 +149,10 @@ export const PresetLibrary: React.FC<PresetLibraryProps> = ({
                     <button
                       onClick={() => onSelectPreset(sauce)}
                       id={`load-custom-sauce-${sauce.id}`}
-                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation ${
                         isCurrent 
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default'
-                          : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-200 border border-emerald-500/30'
+                          : 'bg-emerald-600/20 hover:bg-emerald-600/30 active:bg-emerald-600/40 text-emerald-200 border border-emerald-500/30'
                       }`}
                     >
                       {isCurrent ? (
@@ -162,7 +162,7 @@ export const PresetLibrary: React.FC<PresetLibraryProps> = ({
                         </>
                       ) : (
                         <>
-                          <span>Загрузить</span>
+                          <span>Загрузить в воркбенч</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </>
                       )}
@@ -249,18 +249,18 @@ export const PresetLibrary: React.FC<PresetLibraryProps> = ({
                 </div>
 
                 {/* Action Button */}
-                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-mono italic truncate max-w-[180px]">
+                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-zinc-500 font-mono italic truncate max-w-[140px] sm:max-w-[180px]">
                     {preset.literatureReference.split('/')[0]}
                   </span>
 
                   <button
                     onClick={() => onSelectPreset(preset)}
                     id={`load-preset-${preset.id}`}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation ${
                       isCurrent 
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 cursor-default'
-                        : 'bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/[0.12] hover:border-white/[0.2]'
+                        : 'bg-white/[0.08] hover:bg-white/[0.14] active:bg-white/[0.2] text-white border border-white/[0.12] hover:border-white/[0.2]'
                     }`}
                   >
                     {isCurrent ? (

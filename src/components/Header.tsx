@@ -146,18 +146,19 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Right Actions: Portions + Export + Mobile Menu */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             {/* VPS PostgreSQL Cloud Sync Indicator */}
             <div className="relative">
               <button
                 onClick={() => setShowDbInfo(!showDbInfo)}
                 id="vps-db-status-btn"
-                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all ${
+                className={`flex items-center space-x-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-mono transition-all touch-manipulation ${
                   dbStatus?.connected
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
                 }`}
                 title="Статус базы данных PostgreSQL на вашем VPS"
+                aria-label="Статус базы данных"
               >
                 <Database className="w-3.5 h-3.5" />
                 <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
@@ -166,9 +167,9 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </button>
 
-              {/* DB Info Dropdown */}
+              {/* DB Info Dropdown (Constrained for mobile screen width) */}
               {showDbInfo && (
-                <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-xl bg-[#0E1118] border border-white/[0.12] shadow-2xl z-50 space-y-2.5 animate-in fade-in-50 zoom-in-95">
+                <div className="fixed sm:absolute right-3 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-24px)] sm:w-72 max-w-sm p-3.5 rounded-xl bg-[#0E1118] border border-white/[0.12] shadow-2xl z-50 space-y-2.5 animate-in fade-in-50 zoom-in-95">
                   <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
                     <div className="flex items-center space-x-2">
                       <Server className="w-4 h-4 text-emerald-400" />
@@ -197,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="text-emerald-400">Рецепты, Кладовая, Статьи</span>
                     </div>
                     {dbStatus?.tables && (
-                      <div className="pt-1 text-[10px] text-zinc-500">
+                      <div className="pt-1 text-[10px] text-zinc-500 break-words">
                         Таблицы ({dbStatus.tables.length}): {dbStatus.tables.join(', ')}
                       </div>
                     )}
@@ -206,13 +207,13 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Linear-style Stepper */}
+            {/* Linear-style Stepper with Touch-optimized sizing */}
             <div className="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 text-xs">
               <span className="text-[11px] text-zinc-400 px-2 font-medium hidden sm:inline">Порции:</span>
               <button
                 onClick={() => setPortions(Math.max(1, portions - 1))}
                 aria-label="Уменьшить порции"
-                className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] active:bg-white/[0.15] transition-colors touch-manipulation"
               >
                 -
               </button>
@@ -222,7 +223,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => setPortions(Math.min(10, portions + 1))}
                 aria-label="Увеличить порции"
-                className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] active:bg-white/[0.15] transition-colors touch-manipulation"
               >
                 +
               </button>
@@ -243,7 +244,8 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onExport}
               id="export-lab-sheet-btn"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-xs transition-all shadow-sm shadow-rose-950/40 border border-rose-500/40"
+              className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium text-xs transition-all shadow-sm shadow-rose-950/40 border border-rose-500/40 touch-manipulation"
+              title="Открыть технологическую карту"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Техкарта</span>
@@ -252,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-zinc-400 hover:text-white"
+              className="md:hidden p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-zinc-400 hover:text-white active:bg-white/[0.1] touch-manipulation"
               aria-label="Открыть меню"
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -261,8 +263,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Horizontal Scrollable Tab Bar for Fast Switching */}
-      <div className="md:hidden border-t border-white/[0.06] px-3 py-1.5 overflow-x-auto no-scrollbar flex items-center space-x-1.5 bg-[#08090C]/60">
+      {/* Mobile Horizontal Scrollable Tab Bar with Momentum Scroll */}
+      <div className="md:hidden border-t border-white/[0.06] px-2.5 py-1.5 overflow-x-auto flex items-center space-x-1.5 bg-[#08090C]/80 backdrop-blur-md scroll-smooth [-webkit-overflow-scrolling:touch]">
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -272,10 +274,10 @@ export const Header: React.FC<HeaderProps> = ({
                 setActiveTab(tab.id);
                 setMobileMenuOpen(false);
               }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
                 isActive 
-                  ? 'bg-white/[0.12] text-white border border-white/[0.16] shadow-sm' 
-                  : 'text-zinc-400 hover:text-zinc-200 bg-white/[0.02]'
+                  ? 'bg-rose-500/20 text-white border border-rose-500/30 shadow-sm' 
+                  : 'text-zinc-400 hover:text-zinc-200 bg-white/[0.03] active:bg-white/[0.06]'
               }`}
             >
               {tab.icon}

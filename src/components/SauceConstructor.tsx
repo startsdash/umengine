@@ -285,19 +285,19 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                   return (
                     <div 
                       key={item.ingredientId}
-                      className="bg-[#0C0E14] border border-white/[0.06] hover:border-white/[0.12] rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all group"
+                      className="bg-[#0C0E14] border border-white/[0.06] hover:border-white/[0.12] rounded-lg p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 transition-all group"
                     >
                       {/* Ingredient Info & Chemistry */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium text-xs text-white truncate">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-0.5">
+                          <span className="font-medium text-xs sm:text-sm text-white">
                             {ing.name}
                           </span>
-                          <span className="text-[10px] font-mono text-zinc-400">
+                          <span className="text-[10px] sm:text-xs font-mono text-zinc-400">
                             {ing.chineseName.split(' ')[0]}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2.5 mt-1 text-[10px] text-zinc-400 font-mono">
+                        <div className="flex items-center space-x-2 sm:space-x-2.5 mt-1 text-[10px] text-zinc-400 font-mono flex-wrap gap-y-0.5">
                           {ing.freeGlutamate > 100 && (
                             <span className="text-rose-400">
                               Glu: {ing.freeGlutamate} мг
@@ -309,7 +309,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                             </span>
                           )}
                           {item.notes && (
-                            <span className="text-zinc-500 italic truncate hidden md:inline">
+                            <span className="text-zinc-500 italic truncate hidden sm:inline">
                               {item.notes}
                             </span>
                           )}
@@ -317,18 +317,18 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                       </div>
 
                       {/* Controls (Steppers & Slider) */}
-                      <div className="flex items-center space-x-2 self-end sm:self-center">
+                      <div className="flex items-center justify-between sm:justify-end space-x-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
                         {/* Stepper with accessible touch targets */}
-                        <div className="flex items-center bg-black/40 border border-white/[0.08] rounded-md p-0.5">
+                        <div className="flex items-center bg-black/40 border border-white/[0.08] rounded-lg p-0.5">
                           <button
                             onClick={() => updateAmount(item.ingredientId, -step)}
                             aria-label={`Уменьшить ${ing.name}`}
-                            className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                            className="w-8 h-8 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] active:bg-white/[0.15] transition-colors touch-manipulation"
                           >
                             -
                           </button>
                           <div className="w-14 sm:w-16 text-center">
-                            <span className="font-mono text-xs font-semibold text-white">
+                            <span className="font-mono text-xs sm:text-sm font-semibold text-white">
                               {scaledAmount}
                             </span>
                             <span className="text-[10px] text-zinc-400 ml-1">
@@ -338,7 +338,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                           <button
                             onClick={() => updateAmount(item.ingredientId, step)}
                             aria-label={`Увеличить ${ing.name}`}
-                            className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                            className="w-8 h-8 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] active:bg-white/[0.15] transition-colors touch-manipulation"
                           >
                             +
                           </button>
@@ -358,10 +358,11 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                         {/* Delete Button */}
                         <button
                           onClick={() => removeIngredient(item.ingredientId)}
-                          className="p-1.5 rounded-md text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          className="p-2 sm:p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:bg-rose-500/20 transition-colors touch-manipulation"
                           title="Удалить компонент"
+                          aria-label="Удалить"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -404,7 +405,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
       {/* Save Recipe to VPS PostgreSQL Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-          <div className="bg-[#0E1015] border border-white/[0.12] rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+          <div className="bg-[#0E1015] border border-white/[0.12] rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-5 shadow-2xl space-y-3.5">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
               <div className="flex items-center space-x-2">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -421,7 +422,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
               </div>
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] touch-manipulation"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -443,19 +444,19 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                     type="text"
                     value={saveTitle}
                     onChange={(e) => setSaveTitle(e.target.value)}
-                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
                     placeholder="Например: Сычуаньский чесночный глейз"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <label className="block text-zinc-300 font-medium mb-1">Иероглифы (опционально)</label>
                     <input
                       type="text"
                       value={saveChineseTitle}
                       onChange={(e) => setSaveChineseTitle(e.target.value)}
-                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono text-xs sm:text-sm"
                       placeholder="蒜蓉豉汁"
                     />
                   </div>
@@ -465,7 +466,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                       type="text"
                       value={savePinyin}
                       onChange={(e) => setSavePinyin(e.target.value)}
-                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono text-xs sm:text-sm"
                       placeholder="Suàn Róng Chǐ Zhī"
                     />
                   </div>
@@ -477,7 +478,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                     rows={2}
                     value={saveSummary}
                     onChange={(e) => setSaveSummary(e.target.value)}
-                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none"
+                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none text-xs sm:text-sm"
                     placeholder="Идеален для обжарки сейтана или баклажанов в воке..."
                   />
                 </div>
@@ -500,7 +501,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                 <div className="pt-2 flex items-center justify-end space-x-2">
                   <button
                     onClick={() => setShowSaveModal(false)}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]"
+                    className="px-3.5 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] touch-manipulation"
                   >
                     Отмена
                   </button>
@@ -529,7 +530,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                         }, 1500);
                       }
                     }}
-                    className="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-sm disabled:opacity-50"
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-sm disabled:opacity-50 touch-manipulation"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>{isSaving ? 'Сохранение...' : 'Сохранить'}</span>

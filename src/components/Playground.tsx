@@ -556,11 +556,11 @@ export const Playground: React.FC<PlaygroundProps> = ({
           </div>
 
           {/* Sub-Navigation Tabs */}
-          <div className="flex items-center bg-white/[0.03] p-1 rounded-xl border border-white/[0.08] self-start lg:self-auto">
+          <div className="flex items-center bg-white/[0.03] p-1 rounded-xl border border-white/[0.08] self-start lg:self-auto overflow-x-auto no-scrollbar max-w-full">
             <button
               id="playground-subtab-articles"
               onClick={() => { setSubTab('articles'); setSelectedArticle(null); }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
                 subTab === 'articles'
                   ? 'bg-rose-600 text-white shadow-sm border border-rose-500/40'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
@@ -576,7 +576,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             <button
               id="playground-subtab-recipes"
               onClick={() => { setSubTab('recipes'); setSelectedArticle(null); }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
                 subTab === 'recipes'
                   ? 'bg-rose-600 text-white shadow-sm border border-rose-500/40'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
@@ -592,7 +592,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
             <button
               id="playground-subtab-scraper"
               onClick={() => { setSubTab('scraper'); setSelectedArticle(null); }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
                 subTab === 'scraper'
                   ? 'bg-rose-600 text-white shadow-sm border border-rose-500/40'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
@@ -753,23 +753,23 @@ export const Playground: React.FC<PlaygroundProps> = ({
             const currentMarkdown = isArticleRuActive && transData?.markdownContent ? transData.markdownContent : selectedArticle.markdownContent;
 
             return (
-              <div className="p-6 sm:p-8 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl space-y-6 animate-fade-in">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+              <div className="p-4 sm:p-8 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl space-y-6 animate-fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4 sticky top-14 sm:top-16 bg-[#090A0F]/90 backdrop-blur-md z-20 pt-1 -mx-2 px-2 rounded-lg">
                   <button
                     onClick={() => setSelectedArticle(null)}
-                    className="flex items-center space-x-1.5 text-xs text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]"
+                    className="flex items-center space-x-1.5 text-xs text-zinc-400 hover:text-white transition-colors px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] touch-manipulation"
                   >
                     <ArrowRight className="w-3.5 h-3.5 rotate-180 text-rose-400" />
-                    <span>Назад ко всем статьям</span>
+                    <span>Назад к статьям</span>
                   </button>
 
-                  <div className="flex items-center space-x-2.5">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-2">
                     {/* TRANSLATE TO RUSSIAN BUTTON */}
                     <button
                       id="translate-article-header-btn"
                       onClick={() => handleToggleTranslateArticle(selectedArticle)}
                       disabled={translatingArticleId === selectedArticle.id}
-                      className={`flex items-center space-x-1.5 text-xs px-3.5 py-1.5 rounded-xl border transition-all shadow-sm ${
+                      className={`flex items-center space-x-1.5 text-xs px-3.5 py-2 rounded-xl border transition-all shadow-sm touch-manipulation ${
                         isArticleRuActive
                           ? 'bg-rose-500/20 text-rose-200 border-rose-500/40 hover:bg-rose-500/30'
                           : 'bg-white/[0.05] text-zinc-300 border-white/[0.1] hover:bg-white/[0.09] hover:text-white'
@@ -798,7 +798,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       href={selectedArticle.sourceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center space-x-1 text-xs text-rose-400 hover:text-rose-300 underline font-mono"
+                      className="flex items-center space-x-1 text-xs text-rose-400 hover:text-rose-300 underline font-mono py-1 px-2 rounded-md hover:bg-white/[0.04]"
                     >
                       <span>{selectedArticle.sourceName}</span>
                       <ExternalLink className="w-3 h-3" />
