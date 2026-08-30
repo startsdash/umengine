@@ -155,7 +155,14 @@ export const Playground: React.FC<PlaygroundProps> = ({
         })
       });
 
-      const data = await response.json();
+      const resText = await response.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseErr) {
+        console.warn('Failed to parse API response JSON:', parseErr, resText);
+        throw new Error(`Ответ сервера (${response.status}): ${resText.slice(0, 150) || 'Пустой ответ'}`);
+      }
 
       if (!response.ok || data.error) {
         throw new Error(data.error || `HTTP error ${response.status}`);
@@ -190,6 +197,31 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
       // If recipe found, automatically add to recipes list
       if (data.recipe) {
+        const rawParsed: any[] = data.recipe.parsedIngredients || [];
+        const normalizedParsed: RecipeIngredient[] = rawParsed.length > 0
+          ? rawParsed.map((ing: any) => ({
+              ingredientId: ing.ingredientId || 'light_soy_sauce',
+              amount: typeof ing.amount === 'number' ? ing.amount : (typeof ing.quantity === 'number' ? ing.quantity : 15),
+              unit: ing.unit || 'ml',
+              stage: (ing.stage === 'slurry_gouqian' || ing.stage === 'starch_slurry')
+                ? 'slurry_gouqian'
+                : (ing.stage === 'finish_mingyou' || ing.stage === 'aroma_oil')
+                ? 'finish_mingyou'
+                : (ing.stage === 'baoguo_aromatics' || ing.stage === 'wok_aromatics')
+                ? 'baoguo_aromatics'
+                : (ing.stage === 'liquid_base')
+                ? 'liquid_base'
+                : 'seasoning_mix',
+              notes: ing.notes
+            }))
+          : [
+              { ingredientId: 'light_soy_sauce', amount: 15, unit: 'ml', stage: 'seasoning_mix' },
+              { ingredientId: 'dark_soy_sauce', amount: 5, unit: 'ml', stage: 'seasoning_mix' },
+              { ingredientId: 'shaoxing_wine', amount: 15, unit: 'ml', stage: 'seasoning_mix' },
+              { ingredientId: 'potato_starch', amount: 4, unit: 'g', stage: 'slurry_gouqian' },
+              { ingredientId: 'water_base', amount: 60, unit: 'ml', stage: 'liquid_base' }
+            ];
+
         const newRec: PlaygroundRecipe = {
           id: `scraped_rec_${Date.now()}`,
           title: data.recipe.title || 'Скрапированный рецепт соуса',
@@ -200,14 +232,7 @@ export const Playground: React.FC<PlaygroundProps> = ({
           category: data.recipe.category || 'wanzhi_brown',
           summary: data.recipe.summary || '',
           ingredientsText: data.recipe.ingredientsText || [],
-          parsedIngredients: data.recipe.parsedIngredients && data.recipe.parsedIngredients.length > 0 
-            ? data.recipe.parsedIngredients 
-            : [
-                { ingredientId: 'light_soy_sauce', quantity: 15, unit: 'ml', stage: 'sauce_mix' },
-                { ingredientId: 'shaoxing_wine', quantity: 15, unit: 'ml', stage: 'sauce_mix' },
-                { ingredientId: 'potato_starch', quantity: 4, unit: 'g', stage: 'starch_slurry' },
-                { ingredientId: 'water_base', quantity: 60, unit: 'ml', stage: 'liquid_base' }
-              ],
+          parsedIngredients: normalizedParsed,
           steps: data.recipe.steps || [],
           notes: data.recipe.notes || '',
           synergyEstimate: data.recipe.synergyEstimate || 'Сбалансированная база умами',
@@ -241,8 +266,15 @@ export const Playground: React.FC<PlaygroundProps> = ({
         })
       });
 
-      const data = await response.json();
-      if (data.results) {
+      const resText = await response.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseErr) {
+        console.warn('Search parse error:', parseErr);
+      }
+
+      if (data?.results) {
         setSearchResults(data.results);
       }
     } catch (err) {
