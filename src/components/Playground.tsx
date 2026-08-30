@@ -33,7 +33,8 @@ import {
   ChevronRight,
   Info,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  Languages
 } from 'lucide-react';
 
 interface PlaygroundProps {
@@ -101,6 +102,51 @@ export const Playground: React.FC<PlaygroundProps> = ({
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [scrapeSuccessMsg, setScrapeSuccessMsg] = useState<string | null>(null);
   const [scrapedDataResult, setScrapedDataResult] = useState<any | null>(null);
+
+  // Translation States & Caches
+  const [translatingArticleId, setTranslatingArticleId] = useState<string | null>(null);
+  const [translatingRecipeId, setTranslatingRecipeId] = useState<string | null>(null);
+  const [translationToast, setTranslationToast] = useState<string | null>(null);
+
+  const [translatedArticles, setTranslatedArticles] = useState<Record<string, {
+    title: string;
+    subtitle?: string;
+    summary: string;
+    markdownContent: string;
+    keyBiochemicalTakeaways?: string[];
+  }>>(() => {
+    const saved = localStorage.getItem('umami_translated_articles_v1');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {};
+  });
+
+  const [translatedRecipes, setTranslatedRecipes] = useState<Record<string, {
+    title: string;
+    summary: string;
+    ingredientsText: string[];
+    steps: string[];
+    notes?: string;
+    synergyEstimate?: string;
+  }>>(() => {
+    const saved = localStorage.getItem('umami_translated_recipes_v1');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {};
+  });
+
+  const [activeLangArticle, setActiveLangArticle] = useState<Record<string, 'original' | 'ru'>>({});
+  const [activeLangRecipe, setActiveLangRecipe] = useState<Record<string, 'original' | 'ru'>>({});
+
+  useEffect(() => {
+    localStorage.setItem('umami_translated_articles_v1', JSON.stringify(translatedArticles));
+  }, [translatedArticles]);
+
+  useEffect(() => {
+    localStorage.setItem('umami_translated_recipes_v1', JSON.stringify(translatedRecipes));
+  }, [translatedRecipes]);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -281,6 +327,119 @@ export const Playground: React.FC<PlaygroundProps> = ({
       console.warn('Search error:', err);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  // Translate Article into Russian
+  const handleToggleTranslateArticle = async (article: PlaygroundArticle) => {
+    // If already translated, toggle between 'ru' and 'original'
+    if (translatedArticles[article.id]) {
+      const currentMode = activeLangArticle[article.id] || 'ru';
+      const nextMode = currentMode === 'ru' ? 'original' : 'ru';
+      setActiveLangArticle(prev => ({ ...prev, [article.id]: nextMode }));
+      setTranslationToast(nextMode === 'ru' ? 'Отображается перевод на русский' : 'Отображается оригинальный текст');
+      setTimeout(() => setTranslationToast(null), 3000);
+      return;
+    }
+
+    // Call translation endpoint
+    setTranslatingArticleId(article.id);
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'article',
+          content: {
+            title: article.title,
+            subtitle: article.subtitle,
+            summary: article.summary,
+            markdownContent: article.markdownContent,
+            keyBiochemicalTakeaways: article.keyBiochemicalTakeaways
+          }
+        })
+      });
+
+      const resText = await response.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseErr) {
+        console.warn('Translate parse error:', parseErr);
+      }
+
+      if (data?.translated) {
+        setTranslatedArticles(prev => ({
+          ...prev,
+          [article.id]: data.translated
+        }));
+        setActiveLangArticle(prev => ({ ...prev, [article.id]: 'ru' }));
+        setTranslationToast('Статья успешно переведена на русский язык');
+      } else {
+        throw new Error(data?.error || 'Не удалось выполнить перевод');
+      }
+    } catch (err: any) {
+      console.error('Translation failed:', err);
+      setTranslationToast(`Ошибка перевода: ${err.message || 'Попробуйте позже'}`);
+    } finally {
+      setTranslatingArticleId(null);
+      setTimeout(() => setTranslationToast(null), 4000);
+    }
+  };
+
+  // Translate Recipe into Russian
+  const handleToggleTranslateRecipe = async (recipe: PlaygroundRecipe) => {
+    if (translatedRecipes[recipe.id]) {
+      const currentMode = activeLangRecipe[recipe.id] || 'ru';
+      const nextMode = currentMode === 'ru' ? 'original' : 'ru';
+      setActiveLangRecipe(prev => ({ ...prev, [recipe.id]: nextMode }));
+      setTranslationToast(nextMode === 'ru' ? 'Отображается рецепт на русском' : 'Отображается оригинальный рецепт');
+      setTimeout(() => setTranslationToast(null), 3000);
+      return;
+    }
+
+    setTranslatingRecipeId(recipe.id);
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'recipe',
+          content: {
+            title: recipe.title,
+            summary: recipe.summary,
+            ingredientsText: recipe.ingredientsText,
+            steps: recipe.steps,
+            notes: recipe.notes,
+            synergyEstimate: recipe.synergyEstimate
+          }
+        })
+      });
+
+      const resText = await response.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseErr) {
+        console.warn('Translate recipe parse error:', parseErr);
+      }
+
+      if (data?.translated) {
+        setTranslatedRecipes(prev => ({
+          ...prev,
+          [recipe.id]: data.translated
+        }));
+        setActiveLangRecipe(prev => ({ ...prev, [recipe.id]: 'ru' }));
+        setTranslationToast('Рецепт успешно переведен на русский язык');
+      } else {
+        throw new Error(data?.error || 'Не удалось выполнить перевод');
+      }
+    } catch (err: any) {
+      console.error('Recipe translation failed:', err);
+      setTranslationToast(`Ошибка перевода рецепта: ${err.message || 'Попробуйте позже'}`);
+    } finally {
+      setTranslatingRecipeId(null);
+      setTimeout(() => setTranslationToast(null), 4000);
     }
   };
 
@@ -482,6 +641,21 @@ export const Playground: React.FC<PlaygroundProps> = ({
         </div>
 
         {/* Status Alerts */}
+        {translationToast && (
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs flex items-center justify-between animate-fade-in">
+            <div className="flex items-center space-x-2">
+              <Languages className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{translationToast}</span>
+            </div>
+            <button 
+              onClick={() => setTranslationToast(null)}
+              className="text-rose-400 hover:text-white text-xs font-mono"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {scrapeSuccessMsg && (
           <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between animate-fade-in">
             <div className="flex items-center space-x-2">
@@ -519,132 +693,189 @@ export const Playground: React.FC<PlaygroundProps> = ({
       {subTab === 'articles' && (
         <div className="space-y-6">
           {/* If an article is open in Full Reading View */}
-          {selectedArticle ? (
-            <div className="p-6 sm:p-8 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
-                <button
-                  onClick={() => setSelectedArticle(null)}
-                  className="flex items-center space-x-1.5 text-xs text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]"
-                >
-                  <ArrowRight className="w-3.5 h-3.5 rotate-180 text-rose-400" />
-                  <span>Назад ко всем статьям</span>
-                </button>
+          {selectedArticle ? (() => {
+            const isArticleRuActive = (activeLangArticle[selectedArticle.id] || (translatedArticles[selectedArticle.id] ? 'ru' : 'original')) === 'ru' && Boolean(translatedArticles[selectedArticle.id]);
+            const transData = translatedArticles[selectedArticle.id];
+            const currentTitle = isArticleRuActive && transData?.title ? transData.title : selectedArticle.title;
+            const currentSubtitle = isArticleRuActive && transData?.subtitle ? transData.subtitle : selectedArticle.subtitle;
+            const currentSummary = isArticleRuActive && transData?.summary ? transData.summary : selectedArticle.summary;
+            const currentTakeaways = isArticleRuActive && transData?.keyBiochemicalTakeaways && transData.keyBiochemicalTakeaways.length > 0 ? transData.keyBiochemicalTakeaways : selectedArticle.keyBiochemicalTakeaways;
+            const currentMarkdown = isArticleRuActive && transData?.markdownContent ? transData.markdownContent : selectedArticle.markdownContent;
 
-                <div className="flex items-center space-x-2">
-                  <a
-                    href={selectedArticle.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center space-x-1 text-xs text-rose-400 hover:text-rose-300 underline font-mono"
+            return (
+              <div className="p-6 sm:p-8 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl space-y-6 animate-fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                  <button
+                    onClick={() => setSelectedArticle(null)}
+                    className="flex items-center space-x-1.5 text-xs text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]"
                   >
-                    <span>{selectedArticle.sourceName}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
+                    <ArrowRight className="w-3.5 h-3.5 rotate-180 text-rose-400" />
+                    <span>Назад ко всем статьям</span>
+                  </button>
 
-              {/* Article Header */}
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  {selectedArticle.tags.map((tag, idx) => (
-                    <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
-                      #{tag}
+                  <div className="flex items-center space-x-2.5">
+                    {/* TRANSLATE TO RUSSIAN BUTTON */}
+                    <button
+                      id="translate-article-header-btn"
+                      onClick={() => handleToggleTranslateArticle(selectedArticle)}
+                      disabled={translatingArticleId === selectedArticle.id}
+                      className={`flex items-center space-x-1.5 text-xs px-3.5 py-1.5 rounded-xl border transition-all shadow-sm ${
+                        isArticleRuActive
+                          ? 'bg-rose-500/20 text-rose-200 border-rose-500/40 hover:bg-rose-500/30'
+                          : 'bg-white/[0.05] text-zinc-300 border-white/[0.1] hover:bg-white/[0.09] hover:text-white'
+                      }`}
+                    >
+                      {translatingArticleId === selectedArticle.id ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-400" />
+                          <span>Перевод AI...</span>
+                        </>
+                      ) : isArticleRuActive ? (
+                        <>
+                          <Languages className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="font-semibold text-emerald-300">🇷🇺 На русском</span>
+                          <span className="text-[10px] text-zinc-400 font-mono hidden sm:inline">(кликните для оригинала)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Languages className="w-3.5 h-3.5 text-rose-400" />
+                          <span className="font-medium text-white">Перевести на русский</span>
+                        </>
+                      )}
+                    </button>
+
+                    <a
+                      href={selectedArticle.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center space-x-1 text-xs text-rose-400 hover:text-rose-300 underline font-mono"
+                    >
+                      <span>{selectedArticle.sourceName}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Article Header */}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedArticle.tags.map((tag, idx) => (
+                      <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                        #{tag}
+                      </span>
+                    ))}
+                    {isArticleRuActive && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                        Переведено AI
+                      </span>
+                    )}
+                    <span className="text-[11px] font-mono text-zinc-400 flex items-center space-x-1 ml-auto">
+                      <Clock className="w-3 h-3 text-zinc-500" />
+                      <span>{selectedArticle.readTimeMinutes} мин чтения</span>
                     </span>
-                  ))}
-                  <span className="text-[11px] font-mono text-zinc-400 flex items-center space-x-1 ml-auto">
-                    <Clock className="w-3 h-3 text-zinc-500" />
-                    <span>{selectedArticle.readTimeMinutes} мин чтения</span>
-                  </span>
+                  </div>
+
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
+                    {currentTitle}
+                  </h1>
+                  {currentSubtitle && (
+                    <p className="text-sm sm:text-base text-zinc-300 font-light">
+                      {currentSubtitle}
+                    </p>
+                  )}
+
+                  <div className="text-xs text-zinc-500 font-mono flex items-center space-x-2 pt-1">
+                    <span>Автор: {selectedArticle.author}</span>
+                    {selectedArticle.publishedDate && (
+                      <>
+                        <span>•</span>
+                        <span>{selectedArticle.publishedDate}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-white tracking-tight">
-                  {selectedArticle.title}
-                </h1>
-                {selectedArticle.subtitle && (
-                  <p className="text-sm sm:text-base text-zinc-300 font-light">
-                    {selectedArticle.subtitle}
-                  </p>
+                {/* Key Takeaways Box */}
+                {currentTakeaways && currentTakeaways.length > 0 && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-rose-500/10 to-amber-500/10 border border-rose-500/20 space-y-2">
+                    <div className="flex items-center space-x-2 text-xs font-semibold text-rose-300 uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Ключевые биохимические выводы</span>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-zinc-200">
+                      {currentTakeaways.map((takeaway, idx) => (
+                        <li key={idx} className="flex items-start space-x-2">
+                          <span className="text-rose-400 font-bold">•</span>
+                          <span>{takeaway}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
-                <div className="text-xs text-zinc-500 font-mono flex items-center space-x-2 pt-1">
-                  <span>Автор: {selectedArticle.author}</span>
-                  {selectedArticle.publishedDate && (
-                    <>
-                      <span>•</span>
-                      <span>{selectedArticle.publishedDate}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Key Takeaways Box */}
-              {selectedArticle.keyBiochemicalTakeaways && selectedArticle.keyBiochemicalTakeaways.length > 0 && (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-rose-500/10 to-amber-500/10 border border-rose-500/20 space-y-2">
-                  <div className="flex items-center space-x-2 text-xs font-semibold text-rose-300 uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Ключевые биохимические выводы</span>
+                {/* Markdown Content Renderer */}
+                <div className="pt-4 border-t border-white/[0.08] text-zinc-200 leading-relaxed text-sm sm:text-base space-y-4 prose prose-invert max-w-none">
+                  <div className="markdown-body">
+                    <ReactMarkdown
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-xl sm:text-2xl font-bold font-display text-white mt-6 mb-3 pb-2 border-b border-white/[0.08]" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-lg sm:text-xl font-bold text-white mt-5 mb-2 text-rose-300" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-base sm:text-lg font-semibold text-white mt-4 mb-2" {...props} />,
+                        p: ({node, ...props}) => <p className="text-zinc-300 leading-relaxed mb-4 text-xs sm:text-sm" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1 mb-4 text-zinc-300 text-xs sm:text-sm" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-1 mb-4 text-zinc-300 text-xs sm:text-sm" {...props} />,
+                        li: ({node, ...props}) => <li className="text-zinc-300 text-xs sm:text-sm" {...props} />,
+                        blockquote: ({node, ...props}) => (
+                          <blockquote className="p-3 my-3 rounded-xl bg-white/[0.03] border-l-2 border-rose-500 text-zinc-300 italic text-xs sm:text-sm" {...props} />
+                        ),
+                        table: ({node, ...props}) => (
+                          <div className="overflow-x-auto my-4 rounded-xl border border-white/[0.08]">
+                            <table className="w-full text-left text-xs border-collapse" {...props} />
+                          </div>
+                        ),
+                        th: ({node, ...props}) => <th className="p-2.5 bg-white/[0.04] text-white font-semibold border-b border-white/[0.08]" {...props} />,
+                        td: ({node, ...props}) => <td className="p-2.5 border-b border-white/[0.04] text-zinc-300" {...props} />,
+                        code: ({node, ...props}) => <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-rose-300 font-mono text-xs" {...props} />
+                      }}
+                    >
+                      {currentMarkdown}
+                    </ReactMarkdown>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-zinc-200">
-                    {selectedArticle.keyBiochemicalTakeaways.map((takeaway, idx) => (
-                      <li key={idx} className="flex items-start space-x-2">
-                        <span className="text-rose-400 font-bold">•</span>
-                        <span>{takeaway}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-              )}
 
-              {/* Markdown Content Renderer */}
-              <div className="pt-4 border-t border-white/[0.08] text-zinc-200 leading-relaxed text-sm sm:text-base space-y-4 prose prose-invert max-w-none">
-                <div className="markdown-body">
-                  <ReactMarkdown
-                    components={{
-                      h1: ({node, ...props}) => <h1 className="text-xl sm:text-2xl font-bold font-display text-white mt-6 mb-3 pb-2 border-b border-white/[0.08]" {...props} />,
-                      h2: ({node, ...props}) => <h2 className="text-lg sm:text-xl font-bold text-white mt-5 mb-2 text-rose-300" {...props} />,
-                      h3: ({node, ...props}) => <h3 className="text-base sm:text-lg font-semibold text-white mt-4 mb-2" {...props} />,
-                      p: ({node, ...props}) => <p className="text-zinc-300 leading-relaxed mb-4 text-xs sm:text-sm" {...props} />,
-                      ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1 mb-4 text-zinc-300 text-xs sm:text-sm" {...props} />,
-                      ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-1 mb-4 text-zinc-300 text-xs sm:text-sm" {...props} />,
-                      li: ({node, ...props}) => <li className="text-zinc-300 text-xs sm:text-sm" {...props} />,
-                      blockquote: ({node, ...props}) => (
-                        <blockquote className="p-3 my-3 rounded-xl bg-white/[0.03] border-l-2 border-rose-500 text-zinc-300 italic text-xs sm:text-sm" {...props} />
-                      ),
-                      table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-4 rounded-xl border border-white/[0.08]">
-                          <table className="w-full text-left text-xs border-collapse" {...props} />
-                        </div>
-                      ),
-                      th: ({node, ...props}) => <th className="p-2.5 bg-white/[0.04] text-white font-semibold border-b border-white/[0.08]" {...props} />,
-                      td: ({node, ...props}) => <td className="p-2.5 border-b border-white/[0.04] text-zinc-300" {...props} />,
-                      code: ({node, ...props}) => <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-rose-300 font-mono text-xs" {...props} />
-                    }}
+                {/* Bottom Action */}
+                <div className="pt-6 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    onClick={() => setSelectedArticle(null)}
+                    className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-medium transition-colors"
                   >
-                    {selectedArticle.markdownContent}
-                  </ReactMarkdown>
+                    ← Вернуться к списку статей
+                  </button>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleToggleTranslateArticle(selectedArticle)}
+                      disabled={translatingArticleId === selectedArticle.id}
+                      className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 hover:text-white border border-white/[0.08] text-xs font-medium transition-colors"
+                    >
+                      <Languages className="w-3.5 h-3.5 text-rose-400" />
+                      <span>{isArticleRuActive ? 'Показать оригинал' : 'Перевести на русский'}</span>
+                    </button>
+
+                    <a
+                      href={selectedArticle.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors"
+                    >
+                      <span>Открыть на Substack</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
                 </div>
               </div>
-
-              {/* Bottom Action */}
-              <div className="pt-6 border-t border-white/[0.08] flex items-center justify-between">
-                <button
-                  onClick={() => setSelectedArticle(null)}
-                  className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-medium transition-colors"
-                >
-                  ← Вернуться к списку статей
-                </button>
-                <a
-                  href={selectedArticle.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors"
-                >
-                  <span>Открыть оригинал на Substack</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-          ) : (
+            );
+          })() : (
             /* Articles Cards Grid */
             <div className="space-y-4">
               {/* Search & Tags Filter Bar */}
@@ -689,67 +920,100 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
               {/* Grid of Articles */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredArticles.map(article => (
-                  <div
-                    key={article.id}
-                    onClick={() => setSelectedArticle(article)}
-                    className="group cursor-pointer p-5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-rose-500/30 transition-all flex flex-col justify-between space-y-4 shadow-sm hover:shadow-xl"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-zinc-400 border border-white/[0.06]">
-                            {article.sourceName}
-                          </span>
-                          {article.isCustomScraped && (
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                              Скрапировано
+                {filteredArticles.map(article => {
+                  const isRuActive = (activeLangArticle[article.id] || (translatedArticles[article.id] ? 'ru' : 'original')) === 'ru' && Boolean(translatedArticles[article.id]);
+                  const transData = translatedArticles[article.id];
+                  const cardTitle = isRuActive && transData?.title ? transData.title : article.title;
+                  const cardSummary = isRuActive && transData?.summary ? transData.summary : article.summary;
+
+                  return (
+                    <div
+                      key={article.id}
+                      onClick={() => setSelectedArticle(article)}
+                      className="group cursor-pointer p-5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-rose-500/30 transition-all flex flex-col justify-between space-y-4 shadow-sm hover:shadow-xl"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-zinc-400 border border-white/[0.06]">
+                              {article.sourceName}
                             </span>
-                          )}
+                            {isRuActive ? (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                🇷🇺 RU
+                              </span>
+                            ) : article.isCustomScraped ? (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                Скрапировано
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <span className="text-[11px] font-mono text-zinc-500 flex items-center space-x-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{article.readTimeMinutes} мин</span>
+                          </span>
                         </div>
 
-                        <span className="text-[11px] font-mono text-zinc-500 flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{article.readTimeMinutes} мин</span>
-                        </span>
+                        <h3 className="text-base font-bold font-display text-white group-hover:text-rose-300 transition-colors leading-snug">
+                          {cardTitle}
+                        </h3>
+
+                        <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
+                          {cardSummary}
+                        </p>
                       </div>
 
-                      <h3 className="text-base font-bold font-display text-white group-hover:text-rose-300 transition-colors leading-snug">
-                        {article.title}
-                      </h3>
+                      <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {article.tags.slice(0, 2).map((t, idx) => (
+                            <span key={idx} className="text-[10px] font-mono text-zinc-500">
+                              #{t}
+                            </span>
+                          ))}
 
-                      <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
-                        {article.summary}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                      <div className="flex flex-wrap gap-1">
-                        {article.tags.slice(0, 2).map((t, idx) => (
-                          <span key={idx} className="text-[10px] font-mono text-zinc-500">
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        {article.isCustomScraped && (
+                          {/* Quick Translate Card Button */}
                           <button
-                            onClick={(e) => handleDeleteArticle(article.id, e)}
-                            className="p-1 rounded text-zinc-500 hover:text-rose-400 transition-colors"
-                            title="Удалить статью"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTranslateArticle(article);
+                            }}
+                            disabled={translatingArticleId === article.id}
+                            className={`text-[10px] px-2 py-0.5 rounded-md border flex items-center space-x-1 transition-colors ${
+                              isRuActive
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                : 'bg-white/[0.03] text-zinc-400 hover:text-white border-white/[0.08] hover:bg-white/[0.08]'
+                            }`}
+                            title="Перевести на русский"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {translatingArticleId === article.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin text-rose-400" />
+                            ) : (
+                              <Languages className="w-3 h-3 text-rose-400" />
+                            )}
+                            <span>{isRuActive ? 'RU (Оригинал)' : 'Перевести'}</span>
                           </button>
-                        )}
-                        <span className="text-xs font-medium text-rose-400 flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
-                          <span>Читать лонгрид</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </span>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {article.isCustomScraped && (
+                            <button
+                              onClick={(e) => handleDeleteArticle(article.id, e)}
+                              className="p-1 rounded text-zinc-500 hover:text-rose-400 transition-colors"
+                              title="Удалить статью"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <span className="text-xs font-medium text-rose-400 flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
+                            <span>Читать</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -813,122 +1077,157 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
           {/* Recipes List Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {filteredRecipes.map(recipe => (
-              <div
-                key={recipe.id}
-                className="p-5 sm:p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between space-y-5 hover:border-white/[0.14] transition-all"
-              >
-                <div className="space-y-4">
-                  {/* Top Bar */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-zinc-400 border border-white/[0.06]">
-                          {recipe.sourceName}
-                        </span>
-                        {recipe.isCustomScraped && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                            Скрапировано
+            {filteredRecipes.map(recipe => {
+              const isRuActive = (activeLangRecipe[recipe.id] || (translatedRecipes[recipe.id] ? 'ru' : 'original')) === 'ru' && Boolean(translatedRecipes[recipe.id]);
+              const transData = translatedRecipes[recipe.id];
+              const displayTitle = isRuActive && transData?.title ? transData.title : recipe.title;
+              const displaySummary = isRuActive && transData?.summary ? transData.summary : recipe.summary;
+              const displayIngredients = isRuActive && transData?.ingredientsText && transData.ingredientsText.length > 0 ? transData.ingredientsText : recipe.ingredientsText;
+              const displaySteps = isRuActive && transData?.steps && transData.steps.length > 0 ? transData.steps : recipe.steps;
+              const displaySynergy = isRuActive && transData?.synergyEstimate ? transData.synergyEstimate : recipe.synergyEstimate;
+
+              return (
+                <div
+                  key={recipe.id}
+                  className="p-5 sm:p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between space-y-5 hover:border-white/[0.14] transition-all"
+                >
+                  <div className="space-y-4">
+                    {/* Top Bar */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-zinc-400 border border-white/[0.06]">
+                            {recipe.sourceName}
                           </span>
+                          {isRuActive ? (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                              🇷🇺 RU
+                            </span>
+                          ) : recipe.isCustomScraped ? (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                              Скрапировано
+                            </span>
+                          ) : null}
+                        </div>
+                        <h3 className="text-lg font-bold font-display text-white mt-1.5">
+                          {displayTitle}
+                        </h3>
+                        {recipe.chineseTitle && (
+                          <div className="flex items-center space-x-2 text-xs text-rose-400 font-mono mt-0.5">
+                            <span>{recipe.chineseTitle}</span>
+                            {recipe.pinyin && <span className="text-zinc-500">({recipe.pinyin})</span>}
+                          </div>
                         )}
                       </div>
-                      <h3 className="text-lg font-bold font-display text-white mt-1.5">
-                        {recipe.title}
-                      </h3>
-                      {recipe.chineseTitle && (
-                        <div className="flex items-center space-x-2 text-xs text-rose-400 font-mono mt-0.5">
-                          <span>{recipe.chineseTitle}</span>
-                          {recipe.pinyin && <span className="text-zinc-500">({recipe.pinyin})</span>}
-                        </div>
-                      )}
+
+                      <div className="flex items-center space-x-1.5">
+                        {/* Translate Button on Recipe Card */}
+                        <button
+                          onClick={() => handleToggleTranslateRecipe(recipe)}
+                          disabled={translatingRecipeId === recipe.id}
+                          className={`text-xs px-2.5 py-1 rounded-lg border flex items-center space-x-1.5 transition-colors ${
+                            isRuActive
+                              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                              : 'bg-white/[0.03] text-zinc-300 hover:text-white border-white/[0.08] hover:bg-white/[0.08]'
+                          }`}
+                          title="Перевести рецепт на русский язык"
+                        >
+                          {translatingRecipeId === recipe.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-400" />
+                          ) : (
+                            <Languages className="w-3.5 h-3.5 text-rose-400" />
+                          )}
+                          <span>{isRuActive ? '🇷🇺 RU' : 'Перевести'}</span>
+                        </button>
+
+                        {recipe.isCustomScraped && (
+                          <button
+                            onClick={(e) => handleDeleteRecipe(recipe.id, e)}
+                            className="p-1.5 rounded-lg bg-white/[0.02] hover:bg-rose-500/20 text-zinc-500 hover:text-rose-400 transition-colors"
+                            title="Удалить рецепт"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    {recipe.isCustomScraped && (
-                      <button
-                        onClick={(e) => handleDeleteRecipe(recipe.id, e)}
-                        className="p-1.5 rounded-lg bg-white/[0.02] hover:bg-rose-500/20 text-zinc-500 hover:text-rose-400 transition-colors"
-                        title="Удалить рецепт"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {displaySummary}
+                    </p>
+
+                    {/* Ingredients Breakdown */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                        <span className="flex items-center space-x-1.5">
+                          <Utensils className="w-3 h-3 text-rose-400" />
+                          <span>Ингредиентный состав ({displayIngredients.length}):</span>
+                        </span>
+                        <span className="text-zinc-500">{recipe.parsedIngredients?.length || 0} в конструкторе</span>
+                      </div>
+                      <ul className="space-y-1 text-xs text-zinc-300">
+                        {displayIngredients.map((ing, idx) => (
+                          <li key={idx} className="flex items-center space-x-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500/40" />
+                            <span>{ing}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Steps Preview */}
+                    {displaySteps && displaySteps.length > 0 && (
+                      <div className="space-y-1.5 text-xs">
+                        <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">
+                          Протокол приготовления:
+                        </span>
+                        <ol className="list-decimal pl-4 space-y-1 text-zinc-400 text-xs">
+                          {displaySteps.slice(0, 3).map((step, idx) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                          {displaySteps.length > 3 && (
+                            <li className="text-zinc-600 list-none pt-0.5">
+                              + еще {displaySteps.length - 3} шагов...
+                            </li>
+                          )}
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* Synergy Estimate */}
+                    {displaySynergy && (
+                      <div className="text-[11px] font-mono text-amber-400/90 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center space-x-1.5">
+                        <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span>{displaySynergy}</span>
+                      </div>
                     )}
                   </div>
 
-                  <p className="text-xs text-zinc-300 leading-relaxed">
-                    {recipe.summary}
-                  </p>
+                  {/* Big Action: Load into Sauce Constructor */}
+                  <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between gap-3">
+                    <a
+                      href={recipe.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-zinc-400 hover:text-white flex items-center space-x-1 font-mono transition-colors"
+                    >
+                      <span>Оригинал</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
 
-                  {/* Ingredients Breakdown */}
-                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
-                      <span className="flex items-center space-x-1.5">
-                        <Utensils className="w-3 h-3 text-rose-400" />
-                        <span>Ингредиентный состав ({recipe.ingredientsText.length}):</span>
-                      </span>
-                      <span className="text-zinc-500">{recipe.parsedIngredients?.length || 0} в конструкторе</span>
-                    </div>
-                    <ul className="space-y-1 text-xs text-zinc-300">
-                      {recipe.ingredientsText.map((ing, idx) => (
-                        <li key={idx} className="flex items-center space-x-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500/40" />
-                          <span>{ing}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <button
+                      id={`load-recipe-constructor-${recipe.id}`}
+                      onClick={() => onLoadRecipeToConstructor(recipe.parsedIngredients, displayTitle)}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-rose-950/40 border border-rose-400/30 transition-all group"
+                    >
+                      <FlaskConical className="w-3.5 h-3.5 text-rose-200 group-hover:scale-110 transition-transform" />
+                      <span>Загрузить в конструктор</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
-
-                  {/* Steps Preview */}
-                  {recipe.steps && recipe.steps.length > 0 && (
-                    <div className="space-y-1.5 text-xs">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">
-                        Протокол приготовления:
-                      </span>
-                      <ol className="list-decimal pl-4 space-y-1 text-zinc-400 text-xs">
-                        {recipe.steps.slice(0, 3).map((step, idx) => (
-                          <li key={idx}>{step}</li>
-                        ))}
-                        {recipe.steps.length > 3 && (
-                          <li className="text-zinc-600 list-none pt-0.5">
-                            + еще {recipe.steps.length - 3} шагов...
-                          </li>
-                        )}
-                      </ol>
-                    </div>
-                  )}
-
-                  {/* Synergy Estimate */}
-                  {recipe.synergyEstimate && (
-                    <div className="text-[11px] font-mono text-amber-400/90 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center space-x-1.5">
-                      <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span>{recipe.synergyEstimate}</span>
-                    </div>
-                  )}
                 </div>
-
-                {/* Big Action: Load into Sauce Constructor */}
-                <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between gap-3">
-                  <a
-                    href={recipe.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-zinc-400 hover:text-white flex items-center space-x-1 font-mono transition-colors"
-                  >
-                    <span>Оригинал</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-
-                  <button
-                    id={`load-recipe-constructor-${recipe.id}`}
-                    onClick={() => onLoadRecipeToConstructor(recipe.parsedIngredients, recipe.title)}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-rose-950/40 border border-rose-400/30 transition-all group"
-                  >
-                    <FlaskConical className="w-3.5 h-3.5 text-rose-200 group-hover:scale-110 transition-transform" />
-                    <span>Загрузить в конструктор</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

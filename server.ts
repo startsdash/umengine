@@ -561,6 +561,109 @@ ${JSON.stringify((pantryList || []).slice(0, 30).map((p: any) => ({ id: p.id, na
     }
   });
 
+  // AI Translation Endpoint for Articles & Recipes
+  app.post('/api/translate', async (req, res) => {
+    try {
+      const { type, content } = req.body || {};
+      const customKey = req.headers['x-gemini-api-key'] as string | undefined;
+      const ai = getGeminiClient(customKey);
+
+      if (!content) {
+        return res.status(400).json({ error: 'Контент для перевода обязателен' });
+      }
+
+      if (!ai) {
+        return res.status(500).json({ error: 'Gemini API клиент недоступен' });
+      }
+
+      if (type === 'article') {
+        const { title, subtitle, summary, markdownContent, keyBiochemicalTakeaways } = content;
+        const prompt = `Ты — профессиональный кулинарный переводчик и шеф-биохимик китайской кухни.
+Переведи следующий материал с английского (или другого языка) на грамотный, авторитетный русский язык для поваров и исследователей.
+
+Правила:
+1. Сохраняй всю Markdown-разметку (заголовки #, ##, таблицы, списки, цитаты, жирный шрифт, код).
+2. Китайские термины и названия блюд переводи с указанием оригинального термина и пиньиня в скобках, например: "Светлый соевый соус (生抽, Shengchou)", "Крахмальная суспензия (勾芡, Gouqian)", "Дыхание вока (鑊氣, Wok Hei)".
+3. Биохимические термины переводи научно: глутамат, инозинат (IMP), гуанилат (GMP), реакция Майяра, пиролиз, клейстеризация амилопектина.
+
+Материал:
+{
+  "title": ${JSON.stringify(title || '')},
+  "subtitle": ${JSON.stringify(subtitle || '')},
+  "summary": ${JSON.stringify(summary || '')},
+  "keyBiochemicalTakeaways": ${JSON.stringify(keyBiochemicalTakeaways || [])},
+  "markdownContent": ${JSON.stringify(markdownContent || '')}
+}
+
+Ответь СТРОГО в формате JSON:
+{
+  "title": "Переведенный заголовок на русском",
+  "subtitle": "Переведенный подзаголовок на русском",
+  "summary": "Переведенное краткое содержание",
+  "keyBiochemicalTakeaways": ["Вывод 1", "Вывод 2"],
+  "markdownContent": "Полный переведенный Markdown статьи"
+}`;
+
+        const aiResponse = await ai.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' }
+        });
+
+        if (aiResponse?.text) {
+          const parsed = JSON.parse(aiResponse.text);
+          return res.json({ success: true, translated: parsed });
+        }
+      }
+
+      if (type === 'recipe') {
+        const { title, summary, ingredientsText, steps, notes, synergyEstimate } = content;
+        const prompt = `Ты — шеф-повар и эксперт китайской кулинарии.
+Переведи рецепт соуса/блюда на русский язык.
+Правила:
+- Укажи точные русские кулинарные названия ингредиентов и граммовки/миллилитры.
+- Шаги приготовления распиши понятно с акцентом на вок-технику.
+- Сохраняй китайские термины и пиньинь.
+
+Рецепт:
+{
+  "title": ${JSON.stringify(title || '')},
+  "summary": ${JSON.stringify(summary || '')},
+  "ingredientsText": ${JSON.stringify(ingredientsText || [])},
+  "steps": ${JSON.stringify(steps || [])},
+  "notes": ${JSON.stringify(notes || '')},
+  "synergyEstimate": ${JSON.stringify(synergyEstimate || '')}
+}
+
+Ответь СТРОГО в формате JSON:
+{
+  "title": "Название рецепта на русском",
+  "summary": "Краткое описание на русском",
+  "ingredientsText": ["15 мл светлого соевого соуса", "..."],
+  "steps": ["Шаг 1 на русском", "..."],
+  "notes": "Технологические заметки на русском",
+  "synergyEstimate": "Оценка синергии на русском"
+}`;
+
+        const aiResponse = await ai.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' }
+        });
+
+        if (aiResponse?.text) {
+          const parsed = JSON.parse(aiResponse.text);
+          return res.json({ success: true, translated: parsed });
+        }
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[Translate] Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // Vite development middleware vs production static
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
