@@ -1,4 +1,8 @@
-import { Pool, PoolClient } from 'pg';
+import pg from 'pg';
+
+// Compatibility for CJS/ESM bundling in Node & Vercel Serverless
+const Pool = (pg as any).Pool || (pg as any).default?.Pool || pg;
+type PoolClient = any;
 
 const DEFAULT_DB_URL = process.env.DATABASE_URL || 'postgresql://umami_user:mhFdQz4elE8zG0IGCzcE@2.26.86.122:5432/umami_db?sslmode=disable';
 
@@ -14,7 +18,7 @@ function parseDbInfo(url: string) {
   }
 }
 
-let pool: Pool | null = null;
+let pool: any = null;
 let isInitialized = false;
 let lastConnectionStatus: {
   connected: boolean;
@@ -29,7 +33,7 @@ let lastConnectionStatus: {
   database: 'umami_db'
 };
 
-export function getDbPool(): Pool | null {
+export function getDbPool(): any {
   const connectionString = (process.env.DATABASE_URL || DEFAULT_DB_URL).trim();
   if (!connectionString) return null;
 
@@ -42,16 +46,16 @@ export function getDbPool(): Pool | null {
       const isSslRequired = connectionString.includes('sslmode=require') || connectionString.includes('ssl=true');
       pool = new Pool({
         connectionString,
-        connectionTimeoutMillis: 7000,
-        idleTimeoutMillis: 30000,
-        max: 5,
+        connectionTimeoutMillis: 5000,
+        idleTimeoutMillis: 10000,
+        max: 4,
         ssl: isSslRequired ? { rejectUnauthorized: false } : false
       });
 
-      pool.on('error', (err) => {
-        console.error('[VPS Postgres] Unexpected error on idle client:', err.message);
+      pool.on('error', (err: any) => {
+        console.error('[VPS Postgres] Unexpected error on idle client:', err?.message || err);
         lastConnectionStatus.connected = false;
-        lastConnectionStatus.error = err.message;
+        lastConnectionStatus.error = err?.message || 'Idle client error';
         lastConnectionStatus.lastChecked = new Date().toISOString();
       });
     } catch (e: any) {

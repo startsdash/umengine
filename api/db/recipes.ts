@@ -1,41 +1,55 @@
 import { getDbPool, initDbSchema } from '../../src/db/vpsPostgres';
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
+
   const p = getDbPool();
   if (!p) {
-    return res.status(503).json({ error: 'База данных не настроена' });
+    return res.status(200).json({ success: false, recipes: [], error: 'База данных не настроена' });
   }
 
   try {
-    await initDbSchema();
+    try {
+      await initDbSchema();
+    } catch (e: any) {
+      console.warn('[Vercel DB Recipes] Schema check skipped:', e.message);
+    }
 
     // GET /api/db/recipes
     if (req.method === 'GET') {
-      const result = await p.query('SELECT * FROM saved_recipes ORDER BY created_at DESC LIMIT 50;');
-      return res.status(200).json({
-        success: true,
-        recipes: result.rows.map(r => ({
-          id: r.id,
-          title: r.title,
-          chineseTitle: r.chinese_title,
-          pinyin: r.pinyin,
-          category: r.category,
-          summary: r.summary,
-          ingredientsText: r.ingredients_text,
-          parsedIngredients: r.parsed_ingredients,
-          steps: r.steps,
-          notes: r.notes,
-          synergyEstimate: r.synergy_estimate,
-          sourceUrl: r.source_url,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at
-        }))
-      });
+      try {
+        const result = await p.query('SELECT * FROM saved_recipes ORDER BY created_at DESC LIMIT 50;');
+        return res.status(200).json({
+          success: true,
+          recipes: result.rows.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            chineseTitle: r.chinese_title,
+            pinyin: r.pinyin,
+            category: r.category,
+            summary: r.summary,
+            ingredientsText: r.ingredients_text,
+            parsedIngredients: r.parsed_ingredients,
+            steps: r.steps,
+            notes: r.notes,
+            synergyEstimate: r.synergy_estimate,
+            sourceUrl: r.source_url,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          }))
+        });
+      } catch (dbErr: any) {
+        return res.status(200).json({
+          success: false,
+          recipes: [],
+          error: dbErr.message || 'Ошибка чтения рецептов'
+        });
+      }
     }
 
     // POST /api/db/recipes
     if (req.method === 'POST') {
-      const recipe = req.body;
+      const recipe = typeof req.body === 'string' ? (req.body ? JSON.parse(req.body) : {}) : (req.body || {});
       if (!recipe || !recipe.id || !recipe.title) {
         return res.status(400).json({ error: 'ID и заголовок рецепта обязательны' });
       }

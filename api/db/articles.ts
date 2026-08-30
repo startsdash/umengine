@@ -1,39 +1,53 @@
 import { getDbPool, initDbSchema } from '../../src/db/vpsPostgres';
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
+
   const p = getDbPool();
   if (!p) {
-    return res.status(503).json({ error: 'База данных не настроена' });
+    return res.status(200).json({ success: false, articles: [], error: 'База данных не настроена' });
   }
 
   try {
-    await initDbSchema();
+    try {
+      await initDbSchema();
+    } catch (e: any) {
+      console.warn('[Vercel DB Articles] Schema check skipped:', e.message);
+    }
 
     // GET /api/db/articles
     if (req.method === 'GET') {
-      const result = await p.query('SELECT * FROM saved_articles ORDER BY created_at DESC LIMIT 50;');
-      return res.status(200).json({
-        success: true,
-        articles: result.rows.map(r => ({
-          id: r.id,
-          title: r.title,
-          subtitle: r.subtitle,
-          author: r.author,
-          readTimeMinutes: r.read_time_minutes,
-          tags: r.tags,
-          summary: r.summary,
-          markdownContent: r.markdown_content,
-          keyBiochemicalTakeaways: r.key_biochemical_takeaways,
-          sourceUrl: r.source_url,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at
-        }))
-      });
+      try {
+        const result = await p.query('SELECT * FROM saved_articles ORDER BY created_at DESC LIMIT 50;');
+        return res.status(200).json({
+          success: true,
+          articles: result.rows.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            subtitle: r.subtitle,
+            author: r.author,
+            readTimeMinutes: r.read_time_minutes,
+            tags: r.tags,
+            summary: r.summary,
+            markdownContent: r.markdown_content,
+            keyBiochemicalTakeaways: r.key_biochemical_takeaways,
+            sourceUrl: r.source_url,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          }))
+        });
+      } catch (dbErr: any) {
+        return res.status(200).json({
+          success: false,
+          articles: [],
+          error: dbErr.message || 'Ошибка чтения статей'
+        });
+      }
     }
 
     // POST /api/db/articles
     if (req.method === 'POST') {
-      const article = req.body;
+      const article = typeof req.body === 'string' ? (req.body ? JSON.parse(req.body) : {}) : (req.body || {});
       if (!article || !article.id || !article.title) {
         return res.status(400).json({ error: 'ID и заголовок статьи обязательны' });
       }

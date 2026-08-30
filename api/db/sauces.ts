@@ -1,40 +1,54 @@
 import { getDbPool, initDbSchema } from '../../src/db/vpsPostgres';
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
+
   const p = getDbPool();
   if (!p) {
-    return res.status(503).json({ error: 'База данных не настроена' });
+    return res.status(200).json({ success: false, sauces: [], error: 'База данных не настроена' });
   }
 
   try {
-    await initDbSchema();
+    try {
+      await initDbSchema();
+    } catch (e: any) {
+      console.warn('[Vercel DB Sauces] Schema check skipped:', e.message);
+    }
 
     // GET /api/db/sauces
     if (req.method === 'GET') {
-      const result = await p.query('SELECT * FROM custom_sauces ORDER BY created_at DESC;');
-      return res.status(200).json({
-        success: true,
-        sauces: result.rows.map(r => ({
-          id: r.id,
-          title: r.title,
-          chineseTitle: r.chinese_title,
-          pinyin: r.pinyin,
-          category: r.category,
-          summary: r.summary,
-          scientificBreakdown: r.scientific_breakdown,
-          ingredients: r.ingredients,
-          steps: r.steps,
-          targetProteins: r.target_proteins,
-          tasteProfile: r.taste_profile,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at
-        }))
-      });
+      try {
+        const result = await p.query('SELECT * FROM custom_sauces ORDER BY created_at DESC;');
+        return res.status(200).json({
+          success: true,
+          sauces: result.rows.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            chineseTitle: r.chinese_title,
+            pinyin: r.pinyin,
+            category: r.category,
+            summary: r.summary,
+            scientificBreakdown: r.scientific_breakdown,
+            ingredients: r.ingredients,
+            steps: r.steps,
+            targetProteins: r.target_proteins,
+            tasteProfile: r.taste_profile,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          }))
+        });
+      } catch (dbErr: any) {
+        return res.status(200).json({
+          success: false,
+          sauces: [],
+          error: dbErr.message || 'Ошибка чтения соусов'
+        });
+      }
     }
 
     // POST /api/db/sauces
     if (req.method === 'POST') {
-      const sauce = req.body;
+      const sauce = typeof req.body === 'string' ? (req.body ? JSON.parse(req.body) : {}) : (req.body || {});
       if (!sauce || !sauce.id || !sauce.title) {
         return res.status(400).json({ error: 'ID и название соуса обязательны' });
       }

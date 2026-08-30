@@ -1,6 +1,7 @@
 import { checkDbConnection } from '../../src/db/vpsPostgres';
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
   try {
     const status = await checkDbConnection();
     return res.status(200).json({
