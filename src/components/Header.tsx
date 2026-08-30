@@ -16,7 +16,9 @@ import {
    ChevronRight,
    Command,
    Zap,
-   Globe
+   Globe,
+   Database,
+   Server
  } from 'lucide-react';
 
 interface HeaderProps {
@@ -27,6 +29,13 @@ interface HeaderProps {
   setPortions: (p: number) => void;
   onReset: () => void;
   onExport: () => void;
+  dbStatus?: {
+    connected: boolean;
+    host?: string;
+    database?: string;
+    tables?: string[];
+    error?: string;
+  };
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,9 +45,11 @@ export const Header: React.FC<HeaderProps> = ({
   portions,
   setPortions,
   onReset,
-  onExport
+  onExport,
+  dbStatus
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showDbInfo, setShowDbInfo] = useState(false);
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string; key: string }[] = [
     { id: 'constructor', label: 'Конструктор', icon: <FlaskConical className="w-3.5 h-3.5" />, key: '1' },
@@ -136,6 +147,65 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Actions: Portions + Export + Mobile Menu */}
           <div className="flex items-center space-x-2">
+            {/* VPS PostgreSQL Cloud Sync Indicator */}
+            <div className="relative">
+              <button
+                onClick={() => setShowDbInfo(!showDbInfo)}
+                id="vps-db-status-btn"
+                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all ${
+                  dbStatus?.connected
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                }`}
+                title="Статус базы данных PostgreSQL на вашем VPS"
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className="hidden xl:inline text-[11px]">
+                  {dbStatus?.connected ? 'VPS DB Active' : 'DB Connecting'}
+                </span>
+              </button>
+
+              {/* DB Info Dropdown */}
+              {showDbInfo && (
+                <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-xl bg-[#0E1118] border border-white/[0.12] shadow-2xl z-50 space-y-2.5 animate-in fade-in-50 zoom-in-95">
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                    <div className="flex items-center space-x-2">
+                      <Server className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-semibold text-white">PostgreSQL VPS</span>
+                    </div>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                      dbStatus?.connected 
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                        : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    }`}>
+                      {dbStatus?.connected ? 'Онлайн' : 'Подключение...'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px] font-mono">
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Хост:</span>
+                      <span className="text-zinc-200">{dbStatus?.host || '2.26.86.122'}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>База данных:</span>
+                      <span className="text-zinc-200">{dbStatus?.database || 'umami_db'}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Синхронизация:</span>
+                      <span className="text-emerald-400">Рецепты, Кладовая, Статьи</span>
+                    </div>
+                    {dbStatus?.tables && (
+                      <div className="pt-1 text-[10px] text-zinc-500">
+                        Таблицы ({dbStatus.tables.length}): {dbStatus.tables.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Linear-style Stepper */}
             <div className="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-lg p-0.5 text-xs">
               <span className="text-[11px] text-zinc-400 px-2 font-medium hidden sm:inline">Порции:</span>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PantryIngredient, RecipeIngredient, RecipeStage, TasteProfile } from '../types';
+import { PantryIngredient, RecipeIngredient, RecipeStage, TasteProfile, SauceArchetype } from '../types';
 import { NucleotideSynergyWidget } from './NucleotideSynergyWidget';
 import { TemperatureProfileModal } from './TemperatureProfileModal';
 import { 
@@ -16,7 +16,10 @@ import {
   Sliders,
   Sparkle,
   Thermometer,
-  Activity
+  Activity,
+  Database,
+  Save,
+  CheckCircle2
 } from 'lucide-react';
 
 interface SauceConstructorProps {
@@ -27,6 +30,8 @@ interface SauceConstructorProps {
   selectedProtein: string;
   setSelectedProtein: (p: string) => void;
   portions: number;
+  recipeTitle?: string;
+  onSaveSauceToDb?: (sauce: Partial<SauceArchetype>) => Promise<boolean>;
 }
 
 export const SauceConstructor: React.FC<SauceConstructorProps> = ({
@@ -36,12 +41,22 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
   tasteProfile,
   selectedProtein,
   setSelectedProtein,
-  portions
+  portions,
+  recipeTitle = 'Мой кастомный умами-соус',
+  onSaveSauceToDb
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTempProfile, setShowTempProfile] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveTitle, setSaveTitle] = useState(recipeTitle);
+  const [saveChineseTitle, setSaveChineseTitle] = useState('');
+  const [savePinyin, setSavePinyin] = useState('');
+  const [saveCategory, setSaveCategory] = useState<SauceArchetype['category']>('wanzhi_brown');
+  const [saveSummary, setSaveSummary] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const pantryMap = new Map<string, PantryIngredient>();
   pantryList.forEach(p => pantryMap.set(p.id, p));
@@ -357,16 +372,174 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
           );
         })}
 
-        {/* Add Ingredient Button */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          id="add-pantry-item-to-recipe-btn"
-          className="w-full py-2.5 rounded-xl border border-dashed border-white/[0.12] hover:border-white/[0.24] bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium flex items-center justify-center space-x-2 transition-all shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Добавить компонент из кладовой ({pantryList.length} доступно)</span>
-        </button>
+        {/* Actions Grid: Add Ingredient & Save Formula to DB */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Add Ingredient Button */}
+          <button
+            onClick={() => setShowAddModal(true)}
+            id="add-pantry-item-to-recipe-btn"
+            className="w-full py-2.5 px-3 rounded-xl border border-dashed border-white/[0.12] hover:border-white/[0.24] bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium flex items-center justify-center space-x-2 transition-all shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Добавить компонент ({pantryList.length})</span>
+          </button>
+
+          {/* Save to PostgreSQL Button */}
+          {onSaveSauceToDb && (
+            <button
+              onClick={() => {
+                setSaveTitle(recipeTitle || 'Мой умами-соус');
+                setShowSaveModal(true);
+              }}
+              id="save-recipe-to-vps-btn"
+              className="w-full py-2.5 px-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-medium flex items-center justify-center space-x-2 transition-all shadow-sm"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Сохранить формулу в VPS PostgreSQL</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Save Recipe to VPS PostgreSQL Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="bg-[#0E1015] border border-white/[0.12] rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-white">
+                    Сохранить в VPS PostgreSQL
+                  </h3>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    Таблица custom_sauces @ 2.26.86.122
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {saveSuccess ? (
+              <div className="text-center py-6 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto animate-bounce" />
+                <h4 className="text-sm font-semibold text-white">Рецепт успешно сохранен в БД!</h4>
+                <p className="text-xs text-zinc-400">
+                  Формула синхронизирована с базой данных PostgreSQL на вашем сервере.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-zinc-300 font-medium mb-1">Название формулы</label>
+                  <input
+                    type="text"
+                    value={saveTitle}
+                    onChange={(e) => setSaveTitle(e.target.value)}
+                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    placeholder="Например: Сычуаньский чесночный глейз"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-zinc-300 font-medium mb-1">Иероглифы (опционально)</label>
+                    <input
+                      type="text"
+                      value={saveChineseTitle}
+                      onChange={(e) => setSaveChineseTitle(e.target.value)}
+                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      placeholder="蒜蓉豉汁"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-zinc-300 font-medium mb-1">Пиньинь (опционально)</label>
+                    <input
+                      type="text"
+                      value={savePinyin}
+                      onChange={(e) => setSavePinyin(e.target.value)}
+                      className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                      placeholder="Suàn Róng Chǐ Zhī"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-zinc-300 font-medium mb-1">Краткое описание / Заметка</label>
+                  <textarea
+                    rows={2}
+                    value={saveSummary}
+                    onChange={(e) => setSaveSummary(e.target.value)}
+                    className="w-full bg-[#141720] border border-white/[0.1] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none"
+                    placeholder="Идеален для обжарки сейтана или баклажанов в воке..."
+                  />
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-[11px] text-zinc-400 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Ингредиентов в формуле:</span>
+                    <span className="text-white font-mono">{ingredients.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Интенсивность умами:</span>
+                    <span className="text-rose-400 font-mono">{tasteProfile.umamiIntensityScore.toFixed(1)}/10</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Синергетический индекс:</span>
+                    <span className="text-amber-400 font-mono">x{tasteProfile.synergyMultiplier.toFixed(1)}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end space-x-2">
+                  <button
+                    onClick={() => setShowSaveModal(false)}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08]"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    disabled={isSaving || !saveTitle.trim()}
+                    onClick={async () => {
+                      if (!onSaveSauceToDb) return;
+                      setIsSaving(true);
+                      const ok = await onSaveSauceToDb({
+                        title: saveTitle.trim(),
+                        chineseTitle: saveChineseTitle.trim() || undefined,
+                        pinyin: savePinyin.trim() || undefined,
+                        category: saveCategory,
+                        summary: saveSummary.trim() || `Кастомная умами-формула с синергией x${tasteProfile.synergyMultiplier.toFixed(1)}`,
+                        ingredients,
+                        steps: [],
+                        targetProteins: [selectedProtein],
+                        scientificBreakdown: `Глютамат: ${tasteProfile.glutamateMgTotal.toFixed(0)}мг, Нуклеотиды: ${tasteProfile.nucleotidesMgTotal.toFixed(0)}мг.`
+                      });
+                      setIsSaving(false);
+                      if (ok) {
+                        setSaveSuccess(true);
+                        setTimeout(() => {
+                          setSaveSuccess(false);
+                          setShowSaveModal(false);
+                        }, 1500);
+                      }
+                    }}
+                    className="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-sm disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSaving ? 'Сохранение...' : 'Сохранить'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add Modal (Linear Drawer / Overlay) */}
       {showAddModal && (

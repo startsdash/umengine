@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   ActiveTab, 
   PantryIngredient, 
@@ -29,6 +29,16 @@ export const App: React.FC = () => {
   const [selectedProtein, setSelectedProtein] = useState<string>('doupi');
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
+  // PostgreSQL VPS Database State
+  const [dbStatus, setDbStatus] = useState<{
+    connected: boolean;
+    host?: string;
+    database?: string;
+    tables?: string[];
+    error?: string;
+  }>({ connected: false });
+  const [customSauces, setCustomSauces] = useState<(SauceArchetype & { createdAt?: string; updatedAt?: string })[]>([]);
+
   // Active Recipe State (Defaulting to Classic Wanzhi Brown Sauce)
   const defaultPreset = SAUCE_PRESETS[0];
   const [activePresetId, setActivePresetId] = useState<string>(defaultPreset.id);
@@ -36,7 +46,7 @@ export const App: React.FC = () => {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(defaultPreset.ingredients);
   const [steps, setSteps] = useState<CulinaryStep[]>(defaultPreset.steps);
 
-  // Pantry State (Initialized with full user inventory, with local storage recovery)
+  // Pantry State (Initialized with full user inventory, with local storage and DB sync)
   const [pantryList, setPantryList] = useState<PantryIngredient[]>(() => {
     const saved = localStorage.getItem('umami_pantry_v1');
     if (saved) {
@@ -49,10 +59,110 @@ export const App: React.FC = () => {
     return PANTRY_INGREDIENTS;
   });
 
-  // Save Pantry to LocalStorage
+  // Fetch DB Status & Custom Sauces & Pantry from PostgreSQL VPS
+  const fetchDbData = useCallback(async () => {
+    try {
+      // 1. DB Health
+      const statusRes = await fetch('/api/db/status');
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        setDbStatus(statusData);
+      }
+
+      // 2. Custom Sauces
+      const saucesRes = await fetch('/api/db/sauces');
+      if (saucesRes.ok) {
+        const saucesData = await saucesRes.json();
+        if (Array.isArray(saucesData.sauces)) {
+          setCustomSauces(saucesData.sauces);
+        }
+      }
+
+      // 3. Cloud Pantry State
+      const pantryRes = await fetch('/api/db/pantry');
+      if (pantryRes.ok) {
+        const pantryData = await pantryRes.json();
+        if (Array.isArray(pantryData.pantry) && pantryData.pantry.length > 0) {
+          setPantryList(pantryData.pantry);
+          localStorage.setItem('umami_pantry_v1', JSON.stringify(pantryData.pantry));
+        }
+      }
+    } catch (err) {
+      console.warn('PostgreSQL VPS fetch failed (will use local cache):', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDbData();
+  }, [fetchDbData]);
+
+  // Sync Pantry to PostgreSQL and LocalStorage
   useEffect(() => {
     localStorage.setItem('umami_pantry_v1', JSON.stringify(pantryList));
+
+    // Debounced sync to PostgreSQL
+    const timer = setTimeout(() => {
+      fetch('/api/db/pantry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pantry: pantryList })
+      }).catch(err => {
+        console.warn('Failed to sync pantry to VPS DB:', err);
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [pantryList]);
+
+  // Save Custom Sauce to VPS PostgreSQL
+  const handleSaveSauceToDb = async (sauceData: Partial<SauceArchetype>): Promise<boolean> => {
+    try {
+      const payload = {
+        title: sauceData.title || recipeTitle,
+        chineseTitle: sauceData.chineseTitle || '',
+        pinyin: sauceData.pinyin || '',
+        category: sauceData.category || 'custom',
+        summary: sauceData.summary || '',
+        ingredients: sauceData.ingredients || ingredients,
+        steps: sauceData.steps || steps,
+        targetProteins: sauceData.targetProteins || [selectedProtein],
+        literatureReference: 'Umami Lab Custom Formula (VPS PostgreSQL)',
+        scientificBreakdown: sauceData.scientificBreakdown || ''
+      };
+
+      const res = await fetch('/api/db/sauces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result.sauce) {
+          setCustomSauces(prev => [result.sauce, ...prev.filter(s => s.id !== result.sauce.id)]);
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error saving sauce to PostgreSQL:', err);
+      return false;
+    }
+  };
+
+  // Delete Custom Sauce from VPS PostgreSQL
+  const handleDeleteCustomSauce = async (id: string) => {
+    try {
+      const res = await fetch(`/api/db/sauces/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setCustomSauces(prev => prev.filter(s => s.id !== id));
+      }
+    } catch (err) {
+      console.error('Error deleting sauce from PostgreSQL:', err);
+    }
+  };
 
   // Toggle Pantry Item Stock
   const handleTogglePantryItem = (id: string) => {
@@ -74,7 +184,7 @@ export const App: React.FC = () => {
     setActivePresetId(preset.id);
     setRecipeTitle(preset.title);
     setIngredients(preset.ingredients);
-    setSteps(preset.steps);
+    setSteps(preset.steps || []);
     setActiveTab('constructor');
   };
 
@@ -133,7 +243,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#090D12] text-zinc-100 flex flex-col font-sans selection:bg-rose-500 selection:text-white">
-      {/* App Header */}
+      {/* App Header with PostgreSQL VPS Indicator */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -142,6 +252,7 @@ export const App: React.FC = () => {
         setPortions={setPortions}
         onReset={handleReset}
         onExport={() => setShowExportModal(true)}
+        dbStatus={dbStatus}
       />
 
       {/* Main Container */}
@@ -173,6 +284,8 @@ export const App: React.FC = () => {
                 selectedProtein={selectedProtein}
                 setSelectedProtein={setSelectedProtein}
                 portions={portions}
+                recipeTitle={recipeTitle}
+                onSaveSauceToDb={handleSaveSauceToDb}
               />
             </div>
 
@@ -189,17 +302,19 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: PRESET LIBRARY */}
+        {/* TAB 2: PRESET LIBRARY (INCLUDING POSTGRESQL CUSTOM FORMULAS) */}
         {activeTab === 'library' && (
           <div className="animate-fade-in">
             <PresetLibrary
               onSelectPreset={handleSelectPreset}
               activePresetId={activePresetId}
+              customSauces={customSauces}
+              onDeleteCustomSauce={handleDeleteCustomSauce}
             />
           </div>
         )}
 
-        {/* TAB: PLAYGROUND (FIRE CRAWL SCRAPER, ARTICLES & RECIPES) */}
+        {/* TAB: PLAYGROUND (FIRE CRAWL SCRAPER, ARTICLES & RECIPES IN POSTGRESQL) */}
         {activeTab === 'playground' && (
           <div className="animate-fade-in">
             <Playground
@@ -267,7 +382,7 @@ export const App: React.FC = () => {
 
       {/* Footer Note */}
       <footer className="border-t border-zinc-900 py-6 px-4 text-center text-xs text-zinc-500 font-mono">
-        <p>Umami Engineer · Основано на исследованиях Yamaguchi & Ninomiya (2000) и Chinese Cooking Demystified</p>
+        <p>Umami Engineer · Подключено к PostgreSQL VPS (2.26.86.122:5432/umami_db) · Синергия Yamaguchi & Ninomiya</p>
       </footer>
     </div>
   );
