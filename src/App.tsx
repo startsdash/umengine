@@ -94,6 +94,34 @@ export const App: React.FC = () => {
     setActiveTab('constructor');
   };
 
+  // Handle direct ingredient addition (e.g. from UmamiRadar recommendation drawer)
+  const handleAddIngredient = (ingredient: PantryIngredient) => {
+    if (ingredients.some(i => i.ingredientId === ingredient.id)) return;
+    
+    let defaultStage: any = 'seasoning_mix';
+    if (ingredient.category === 'aromatics' || ingredient.id === 'pixian_doubanjiang') {
+      defaultStage = 'baoguo_aromatics';
+    } else if (ingredient.id === 'potato_starch') {
+      defaultStage = 'slurry_gouqian';
+    } else if (ingredient.id === 'water_stock' || ingredient.id === 'pickle_brine') {
+      defaultStage = 'liquid_base';
+    } else if (ingredient.id === 'sesame_oil') {
+      defaultStage = 'finish_mingyou';
+    }
+
+    const defaultAmount = ingredient.defaultUnit === 'ml' ? 15 : ingredient.defaultUnit === 'g' ? 10 : 1;
+
+    setIngredients(prev => [
+      ...prev,
+      {
+        ingredientId: ingredient.id,
+        amount: defaultAmount,
+        unit: ingredient.defaultUnit as any,
+        stage: defaultStage
+      }
+    ]);
+  };
+
   // Handle Reset to Default
   const handleReset = () => {
     setActivePresetId(defaultPreset.id);
@@ -150,7 +178,12 @@ export const App: React.FC = () => {
 
             {/* Right Column: Live Telemetry & Kinetic Visualizers (5 Cols) */}
             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-28">
-              <UmamiRadar tasteProfile={tasteProfile} />
+              <UmamiRadar 
+                tasteProfile={tasteProfile} 
+                pantryList={pantryList}
+                currentIngredients={ingredients}
+                onAddIngredient={handleAddIngredient}
+              />
               <SynergyCurve tasteProfile={tasteProfile} />
             </div>
           </div>
