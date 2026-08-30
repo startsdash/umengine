@@ -39,6 +39,45 @@ interface GeminiModelInfo {
   outputTokenLimit?: number;
 }
 
+const DEFAULT_CURATED_MODELS: GeminiModelInfo[] = [
+  {
+    id: 'gemini-3.7-flash',
+    displayName: 'Gemini 3.7 Flash (Рекомендуется)',
+    description: 'Флагманская гибридная модель с адаптивным мышлением, наивысшая скорость и точность биохимических расчетов.',
+    category: 'flagship',
+    speed: 'Высокая',
+    reasoning: 'Отличное',
+    isRecommended: true
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    displayName: 'Gemini 3.1 Flash Lite',
+    description: 'Сверхбыстрая легковесная модель для мгновенного подбора базовых соотношений.',
+    category: 'fast',
+    speed: 'Молниеносная',
+    reasoning: 'Хорошее',
+    isRecommended: false
+  },
+  {
+    id: 'gemini-3.1-pro-preview',
+    displayName: 'Gemini 3.1 Pro Preview',
+    description: 'Глубокое рассуждение и сложные биохимические взаимосвязи рецептур.',
+    category: 'reasoning',
+    speed: 'Средняя',
+    reasoning: 'Максимальное',
+    isRecommended: false
+  },
+  {
+    id: 'gemini-flash-latest',
+    displayName: 'Gemini Flash Latest',
+    description: 'Актуальный стабильный релиз линейки Gemini Flash.',
+    category: 'standard',
+    speed: 'Высокая',
+    reasoning: 'Хорошее',
+    isRecommended: false
+  }
+];
+
 export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
   pantryList,
   tasteProfile,
@@ -50,11 +89,11 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
   const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Model Selection State
-  const [availableModels, setAvailableModels] = useState<GeminiModelInfo[]>([]);
+  // Model Selection State - Initialized with curated models so list is never empty
+  const [availableModels, setAvailableModels] = useState<GeminiModelInfo[]>(DEFAULT_CURATED_MODELS);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-3.7-flash');
   const [loadingModels, setLoadingModels] = useState(false);
-  const [modelsSource, setModelsSource] = useState<string>('');
+  const [modelsSource, setModelsSource] = useState<string>('curated');
   const [showModelDrawer, setShowModelDrawer] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
@@ -71,20 +110,30 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
     try {
       const res = await fetch('/api/models');
       if (res.ok) {
-        const data = await res.json();
-        if (data.models && Array.isArray(data.models)) {
-          setAvailableModels(data.models);
-          setModelsSource(data.source || 'google_api');
-          
-          // Ensure selected model exists, otherwise keep gemini-3.7-flash or first
-          if (!data.models.some((m: GeminiModelInfo) => m.id === selectedModel)) {
-            const defaultM = data.models.find((m: GeminiModelInfo) => m.isRecommended) || data.models[0];
-            if (defaultM) setSelectedModel(defaultM.id);
+        const text = await res.text();
+        // Check if response is valid JSON (and not index.html on SPA fallback)
+        if (text.trim().startsWith('{')) {
+          const data = JSON.parse(text);
+          if (data.models && Array.isArray(data.models) && data.models.length > 0) {
+            setAvailableModels(data.models);
+            setModelsSource(data.source || 'google_api');
+            
+            // Ensure selected model exists, otherwise keep gemini-3.7-flash or first
+            if (!data.models.some((m: GeminiModelInfo) => m.id === selectedModel)) {
+              const defaultM = data.models.find((m: GeminiModelInfo) => m.isRecommended) || data.models[0];
+              if (defaultM) setSelectedModel(defaultM.id);
+            }
+            return;
           }
         }
       }
+      // If endpoint failed or returned non-JSON, ensure curated models remain
+      setAvailableModels(DEFAULT_CURATED_MODELS);
+      setModelsSource('curated');
     } catch (err) {
-      console.warn('Failed to load models:', err);
+      console.warn('Failed to load live models, keeping curated list:', err);
+      setAvailableModels(DEFAULT_CURATED_MODELS);
+      setModelsSource('curated');
     } finally {
       setLoadingModels(false);
     }
