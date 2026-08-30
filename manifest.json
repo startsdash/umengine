@@ -1,0 +1,16 @@
+{
+  "short_name": "UmamiLab",
+  "name": "Umami Engineer — Научный конструктор соусов",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#090D12",
+  "theme_color": "#090D12",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}

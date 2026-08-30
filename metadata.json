@@ -1,0 +1,6 @@
+{
+  "name": "Umami Engineer",
+  "description": "Интерактивный научный конструктор соусов и бульонов китайской традиции на основе науки об умами и синергии нуклеотидов.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
