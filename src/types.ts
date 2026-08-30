@@ -113,4 +113,38 @@ export interface SauceArchetype {
   literatureReference: string;
 }
 
-export type ActiveTab = 'constructor' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol';
+export interface PlaygroundArticle {
+  id: string;
+  title: string;
+  subtitle?: string;
+  sourceName: string;
+  sourceUrl: string;
+  author: string;
+  readTimeMinutes: number;
+  publishedDate?: string;
+  tags: string[];
+  summary: string;
+  markdownContent: string;
+  keyBiochemicalTakeaways: string[];
+  isCustomScraped?: boolean;
+}
+
+export interface PlaygroundRecipe {
+  id: string;
+  title: string;
+  chineseTitle?: string;
+  pinyin?: string;
+  sourceName: string;
+  sourceUrl: string;
+  author?: string;
+  category: string;
+  summary: string;
+  ingredientsText: string[];
+  parsedIngredients: RecipeIngredient[];
+  steps: string[];
+  notes?: string;
+  synergyEstimate?: string;
+  isCustomScraped?: boolean;
+}
+
+export type ActiveTab = 'constructor' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol' | 'playground';

@@ -15,7 +15,8 @@ import {
    Check,
    ChevronRight,
    Command,
-   Zap
+   Zap,
+   Globe
  } from 'lucide-react';
 
 interface HeaderProps {
@@ -42,10 +43,11 @@ export const Header: React.FC<HeaderProps> = ({
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string; key: string }[] = [
     { id: 'constructor', label: 'Конструктор', icon: <FlaskConical className="w-3.5 h-3.5" />, key: '1' },
     { id: 'library', label: 'Профили соусов', icon: <Layers className="w-3.5 h-3.5" />, badge: '7', key: '2' },
-    { id: 'protocol', label: 'Вок-протокол', icon: <Flame className="w-3.5 h-3.5" />, key: '3' },
-    { id: 'pantry', label: 'Кладовая', icon: <PackageCheck className="w-3.5 h-3.5" />, badge: '28', key: '4' },
-    { id: 'science', label: 'Наука об Умами', icon: <BookOpen className="w-3.5 h-3.5" />, key: '5' },
-    { id: 'ai_synthesizer', label: 'AI Шеф-Инженер', icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />, badge: 'AI', key: '6' }
+    { id: 'playground', label: 'Playground', icon: <Globe className="w-3.5 h-3.5 text-rose-400" />, badge: 'Web', key: '3' },
+    { id: 'protocol', label: 'Вок-протокол', icon: <Flame className="w-3.5 h-3.5" />, key: '4' },
+    { id: 'pantry', label: 'Кладовая', icon: <PackageCheck className="w-3.5 h-3.5" />, badge: '28', key: '5' },
+    { id: 'science', label: 'Наука об Умами', icon: <BookOpen className="w-3.5 h-3.5" />, key: '6' },
+    { id: 'ai_synthesizer', label: 'AI Шеф-Инженер', icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />, badge: 'AI', key: '7' }
   ];
 
   return (

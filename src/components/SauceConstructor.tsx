@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PantryIngredient, RecipeIngredient, RecipeStage, TasteProfile } from '../types';
 import { NucleotideSynergyWidget } from './NucleotideSynergyWidget';
+import { TemperatureProfileModal } from './TemperatureProfileModal';
 import { 
   Plus, 
   Trash2, 
@@ -13,7 +14,9 @@ import {
   Search,
   X,
   Sliders,
-  Sparkle
+  Sparkle,
+  Thermometer,
+  Activity
 } from 'lucide-react';
 
 interface SauceConstructorProps {
@@ -38,6 +41,7 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showTempProfile, setShowTempProfile] = useState(false);
 
   const pantryMap = new Map<string, PantryIngredient>();
   pantryList.forEach(p => pantryMap.set(p.id, p));
@@ -197,6 +201,37 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
         ingredients={ingredients}
         pantryList={pantryList}
       />
+
+      {/* Temperature Profile Action Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+            <Thermometer className="w-3.5 h-3.5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-semibold text-white">
+                Термодинамика & Вок-кинетика
+              </span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 hidden sm:inline">
+                4°C — 250°C
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              Моделирование синергии Ямагучи, реакции Майяра и клейстеризации крахмала по температурам
+            </p>
+          </div>
+        </div>
+
+        <button
+          id="show-temperature-profile-btn"
+          onClick={() => setShowTempProfile(true)}
+          className="flex items-center justify-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] text-white text-xs font-medium border border-white/[0.12] transition-all shadow-sm group shrink-0"
+        >
+          <Thermometer className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+          <span>Показать температурный профиль</span>
+        </button>
+      </div>
 
       {/* Main Ingredient Stage Modules (Linear Stack) */}
       <div className="space-y-3">
@@ -435,6 +470,15 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Temperature Profile Modal */}
+      <TemperatureProfileModal 
+        isOpen={showTempProfile}
+        onClose={() => setShowTempProfile(false)}
+        tasteProfile={tasteProfile}
+        ingredients={ingredients}
+        pantryList={pantryList}
+      />
     </div>
   );
 };

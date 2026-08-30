@@ -19,6 +19,7 @@ import { PantryManager } from './components/PantryManager';
 import { CookingProtocol } from './components/CookingProtocol';
 import { ScienceCompendium } from './components/ScienceCompendium';
 import { AiSynthesizer } from './components/AiSynthesizer';
+import { Playground } from './components/Playground';
 import { LabExportModal } from './components/LabExportModal';
 
 export const App: React.FC = () => {
@@ -82,6 +83,14 @@ export const App: React.FC = () => {
     setActivePresetId('custom_ai');
     setRecipeTitle(title);
     setIngredients(aiIngredients);
+    setActiveTab('constructor');
+  };
+
+  // Handle Loading Recipe from Playground to Constructor
+  const handleLoadPlaygroundRecipe = (loadedIngredients: RecipeIngredient[], title: string) => {
+    setActivePresetId('scraped_' + Date.now());
+    setRecipeTitle(title);
+    setIngredients(loadedIngredients);
     setActiveTab('constructor');
   };
 
@@ -153,6 +162,17 @@ export const App: React.FC = () => {
             <PresetLibrary
               onSelectPreset={handleSelectPreset}
               activePresetId={activePresetId}
+            />
+          </div>
+        )}
+
+        {/* TAB: PLAYGROUND (FIRE CRAWL SCRAPER, ARTICLES & RECIPES) */}
+        {activeTab === 'playground' && (
+          <div className="animate-fade-in">
+            <Playground
+              pantryList={pantryList}
+              tasteProfile={tasteProfile}
+              onLoadRecipeToConstructor={handleLoadPlaygroundRecipe}
             />
           </div>
         )}

@@ -53,7 +53,7 @@ export const LabExportModal: React.FC<LabExportModalProps> = ({
     });
 
     md += `\n## 2. Сенсорная телеметрия\n`;
-    md += `- Свободный L-глутамат: ${tasteProfile.freeGlutamateMgTotal} мг\n`;
+    md += `- Свободный L-глутамат: ${tasteProfile.glutamateMgTotal} мг\n`;
     md += `- 5'-рибонуклеотиды: ${tasteProfile.nucleotidesMgTotal} мг (IMP: ${tasteProfile.impPercentOfNucleotides}%, GMP: ${tasteProfile.gmpPercentOfNucleotides}%, AMP: ${tasteProfile.ampPercentOfNucleotides}%)\n`;
     md += `- Текстура / Вязкость: ${tasteProfile.viscosityLabel}\n`;
     md += `- Время затухания послевкусия: ~${tasteProfile.aftertasteHalfLifeSeconds} сек\n\n`;
