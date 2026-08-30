@@ -2,6 +2,18 @@ import { Pool, PoolClient } from 'pg';
 
 const DEFAULT_DB_URL = process.env.DATABASE_URL || 'postgresql://umami_user:mhFdQz4elE8zG0IGCzcE@2.26.86.122:5432/umami_db?sslmode=disable';
 
+function parseDbInfo(url: string) {
+  try {
+    const parsed = new URL(url.replace(/^postgresql:\/\//, 'http://'));
+    return {
+      host: parsed.hostname || '2.26.86.122',
+      database: parsed.pathname.replace(/^\//, '') || 'umami_db'
+    };
+  } catch {
+    return { host: '2.26.86.122', database: 'umami_db' };
+  }
+}
+
 let pool: Pool | null = null;
 let isInitialized = false;
 let lastConnectionStatus: {
@@ -18,17 +30,22 @@ let lastConnectionStatus: {
 };
 
 export function getDbPool(): Pool | null {
-  const connectionString = process.env.DATABASE_URL || DEFAULT_DB_URL;
+  const connectionString = (process.env.DATABASE_URL || DEFAULT_DB_URL).trim();
   if (!connectionString) return null;
+
+  const info = parseDbInfo(connectionString);
+  lastConnectionStatus.host = info.host;
+  lastConnectionStatus.database = info.database;
 
   if (!pool) {
     try {
+      const isSslRequired = connectionString.includes('sslmode=require') || connectionString.includes('ssl=true');
       pool = new Pool({
         connectionString,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 7000,
         idleTimeoutMillis: 30000,
-        max: 10,
-        ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false
+        max: 5,
+        ssl: isSslRequired ? { rejectUnauthorized: false } : false
       });
 
       pool.on('error', (err) => {
