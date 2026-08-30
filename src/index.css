@@ -3,51 +3,130 @@
 @layer base {
   :root {
     --font-mono: 'JetBrains Mono', monospace;
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-display: 'Space Grotesk', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Linear style palette */
+    --color-linear-bg: #08090C;
+    --color-linear-surface: #0E1015;
+    --color-linear-card: #12151B;
+    --color-linear-border: rgba(255, 255, 255, 0.08);
+    --color-linear-border-hover: rgba(255, 255, 255, 0.16);
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #090D12;
-    color: #E2E8F0;
+    background-color: #08090C;
+    color: #EDEDEF;
     overflow-x: hidden;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Custom subtle scrollbar */
+  /* Linear-style refined scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: #090D12;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1E293B;
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: rgba(255, 255, 255, 0.22);
   }
 }
 
+/* Linear-style UI Utilities */
+.linear-card {
+  background: rgba(18, 21, 27, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.linear-card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.linear-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(24, 28, 36, 0.8);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.6);
+}
+
+.linear-glass {
+  background: rgba(14, 16, 21, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.linear-border {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.linear-border-subtle {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.linear-glow-rose {
+  box-shadow: 0 0 35px -5px rgba(244, 63, 94, 0.15);
+}
+
+.linear-glow-amber {
+  box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.15);
+}
+
+.linear-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #EDEDEF;
+}
+.linear-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.linear-pill-active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+}
+
 .font-mono-tabular {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .font-display {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
 }
 
-/* Subtle scientific grid background */
-.bg-grid-pattern {
-  background-size: 32px 32px;
+/* Linear-style Ambient Grid Background */
+.bg-linear-grid {
+  background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
 }
 
-.bg-radial-glow {
-  background: radial-gradient(circle at 50% 0%, rgba(225, 29, 72, 0.08) 0%, transparent 60%);
+/* Ambient Radial Glows */
+.bg-linear-glow {
+  background: 
+    radial-gradient(ellipse 60% 40% at 50% -20%, rgba(244, 63, 94, 0.12), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 85% 10%, rgba(245, 158, 11, 0.06), transparent 60%);
 }
+
+/* Hide scrollbar for tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

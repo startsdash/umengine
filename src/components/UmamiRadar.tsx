@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TasteProfile } from '../types';
-import { Sparkles, HeartPulse, Clock, ShieldCheck, Flame, Info, X, Calculator, HelpCircle } from 'lucide-react';
+import { Sparkles, Clock, ShieldCheck, HelpCircle, X, Calculator } from 'lucide-react';
 
 interface UmamiRadarProps {
   tasteProfile: TasteProfile;
@@ -19,9 +19,9 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
   ];
 
   // SVG Radar coordinates calculation
-  const size = 200;
+  const size = 190;
   const center = size / 2;
-  const radius = 70;
+  const radius = 68;
   const angleStep = (Math.PI * 2) / axes.length;
 
   const points = axes.map((axis, i) => {
@@ -35,73 +35,70 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
   const gridCircles = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div className="bg-[#10151E] border border-zinc-800/90 rounded-2xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
-      {/* Background Accent */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="rounded-xl bg-white/[0.02] border border-white/[0.08] p-3 sm:p-4 backdrop-blur-xl flex flex-col justify-between space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-          <h3 className="font-display font-semibold text-sm text-white tracking-wide">
-            СЕНСОРНЫЙ ПРОФИЛЬ & СИНЕРГИЯ
+          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <h3 className="text-xs font-semibold text-white tracking-tight">
+            Сенсорный профиль и синергия
           </h3>
         </div>
         <button
           onClick={() => setShowFormulaInfo(true)}
-          className="text-[11px] font-mono text-zinc-400 hover:text-amber-400 flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 transition-colors"
+          className="text-[10px] font-mono text-zinc-400 hover:text-white flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.16] transition-colors"
           title="Расшифровка формул"
           id="open-radar-formula-info-btn"
         >
-          <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+          <HelpCircle className="w-3 h-3 text-amber-400" />
           <span>Формулы</span>
         </button>
       </div>
 
-      {/* Top Gauge: Multiplier */}
-      <div className="my-4 grid grid-cols-2 gap-3">
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+      {/* Top Gauge: Multiplier & Aftertaste */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#0C0E14] border border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] text-zinc-400">
             <span className="flex items-center space-x-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3 h-3 text-amber-400" />
               <span>Мультипликатор</span>
             </span>
-            <span className="font-mono text-[10px] text-zinc-500">γ=1218</span>
+            <span className="font-mono text-[9px] text-zinc-500">γ=1218</span>
           </div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className={`text-2xl font-bold font-mono ${tasteProfile.synergyMultiplier > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
+          <div className="mt-1 flex items-baseline space-x-1">
+            <span className={`text-xl font-bold font-mono ${tasteProfile.synergyMultiplier > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
               {tasteProfile.synergyMultiplier}×
             </span>
-            <span className="text-[10px] text-zinc-400">усиление</span>
+            <span className="text-[10px] text-zinc-500 font-mono">boost</span>
           </div>
-          <div className="mt-1 text-[10px] text-zinc-400 truncate">
-            Эквивалент: {tasteProfile.equivalentMsgConcentrationGPerDl} г/дл MSG
+          <div className="text-[10px] text-zinc-400 font-mono truncate mt-0.5">
+            Экв: {tasteProfile.equivalentMsgConcentrationGPerDl} г/дл MSG
           </div>
         </div>
 
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+        <div className="bg-[#0C0E14] border border-white/[0.06] rounded-lg p-2.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] text-zinc-400">
             <span className="flex items-center space-x-1">
-              <Clock className="w-3.5 h-3.5 text-rose-400" />
+              <Clock className="w-3 h-3 text-rose-400" />
               <span>Послевкусие</span>
             </span>
-            <span className="font-mono text-[10px] text-rose-400/80">T1/2</span>
+            <span className="font-mono text-[9px] text-rose-400/80">T1/2</span>
           </div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-2xl font-bold font-mono text-rose-400">
+          <div className="mt-1 flex items-baseline space-x-1">
+            <span className="text-xl font-bold font-mono text-rose-400">
               ~{tasteProfile.aftertasteHalfLifeSeconds}с
             </span>
           </div>
-          <div className="mt-1 text-[10px] text-zinc-400 truncate">
+          <div className="text-[10px] text-zinc-400 font-mono truncate mt-0.5">
             Стойкость на корне языка
           </div>
         </div>
       </div>
 
       {/* Center Radar & Pentagon */}
-      <div className="flex flex-col sm:flex-row items-center justify-around py-2 gap-4">
+      <div className="flex flex-col sm:flex-row items-center justify-around py-1 gap-3">
         {/* Radar SVG */}
-        <div className="relative w-[180px] h-[180px] flex items-center justify-center">
+        <div className="relative w-[170px] h-[170px] flex items-center justify-center">
           <svg width={size} height={size} className="overflow-visible">
             {/* Concentric Polygons */}
             {gridCircles.map((level, idx) => {
@@ -145,9 +142,9 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
             {/* Filled Taste Polygon */}
             <polygon
               points={points}
-              fill="rgba(244, 63, 94, 0.25)"
+              fill="rgba(244, 63, 94, 0.22)"
               stroke="#F43F5E"
-              strokeWidth="2"
+              strokeWidth="1.75"
               className="transition-all duration-300 ease-out"
             />
 
@@ -162,9 +159,9 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
                   key={i}
                   cx={x}
                   cy={y}
-                  r="3.5"
+                  r="3"
                   fill={axis.color}
-                  stroke="#090D12"
+                  stroke="#0C0E14"
                   strokeWidth="1.5"
                   className="transition-all duration-300"
                 />
@@ -174,21 +171,21 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
         </div>
 
         {/* Sensory Values Legend */}
-        <div className="w-full sm:w-auto space-y-2 font-mono text-xs">
+        <div className="w-full sm:w-auto space-y-1.5 font-mono text-xs">
           {axes.map((axis, i) => (
-            <div key={i} className="flex items-center justify-between sm:justify-start space-x-3">
-              <div className="flex items-center space-x-1.5 min-w-[100px]">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: axis.color }} />
+            <div key={i} className="flex items-center justify-between sm:justify-start space-x-2.5">
+              <div className="flex items-center space-x-1.5 min-w-[95px]">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: axis.color }} />
                 <span className="text-zinc-400 font-sans text-xs">{axis.label}:</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="w-14 h-1 bg-white/[0.08] rounded-full overflow-hidden">
                   <div 
                     className="h-full rounded-full transition-all duration-300"
                     style={{ width: `${(axis.value / 10) * 100}%`, backgroundColor: axis.color }}
                   />
                 </div>
-                <span className="text-white font-semibold w-6 text-right">{axis.value.toFixed(1)}</span>
+                <span className="text-white font-semibold text-xs w-5 text-right">{axis.value.toFixed(1)}</span>
               </div>
             </div>
           ))}
@@ -196,90 +193,90 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
       </div>
 
       {/* Nucleotide Breakdown Bar */}
-      <div className="mt-4 pt-3 border-t border-zinc-800/80 space-y-2">
+      <div className="pt-2.5 border-t border-white/[0.06] space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-zinc-400 font-medium">Баланс 5'-Нуклеотидов:</span>
-          <span className="font-mono text-zinc-300">
+          <span className="text-zinc-400 text-[11px] font-medium">Баланс нуклеотидов:</span>
+          <span className="font-mono text-[11px] text-zinc-300">
             {tasteProfile.nucleotidesMgTotal} мг ({tasteProfile.nucleotideToGlutamateRatio}:1 к Glu)
           </span>
         </div>
 
-        <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden flex">
+        <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden flex">
           <div 
-            title={`IMP (Инозинат мяса/птицы): ${tasteProfile.impPercentOfNucleotides}%`}
+            title={`IMP: ${tasteProfile.impPercentOfNucleotides}%`}
             style={{ width: `${tasteProfile.impPercentOfNucleotides}%` }}
             className="bg-amber-500 h-full transition-all"
           />
           <div 
-            title={`GMP (Гуанилат шиитаке): ${tasteProfile.gmpPercentOfNucleotides}%`}
+            title={`GMP: ${tasteProfile.gmpPercentOfNucleotides}%`}
             style={{ width: `${tasteProfile.gmpPercentOfNucleotides}%` }}
             className="bg-emerald-500 h-full transition-all"
           />
           <div 
-            title={`AMP (Аденилат устриц/моллюсков): ${tasteProfile.ampPercentOfNucleotides}%`}
+            title={`AMP: ${tasteProfile.ampPercentOfNucleotides}%`}
             style={{ width: `${tasteProfile.ampPercentOfNucleotides}%` }}
             className="bg-cyan-500 h-full transition-all"
           />
         </div>
 
-        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-0.5">
+        <div className="flex items-center justify-between text-[9px] font-mono text-zinc-400 pt-0.5">
           <span className="flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-            <span>IMP (Мясо/Цзицзин): {tasteProfile.impPercentOfNucleotides}%</span>
+            <span>IMP: {tasteProfile.impPercentOfNucleotides}%</span>
           </span>
           <span className="flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-            <span>GMP (Шиитаке): {tasteProfile.gmpPercentOfNucleotides}%</span>
+            <span>GMP: {tasteProfile.gmpPercentOfNucleotides}%</span>
           </span>
           <span className="flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block" />
-            <span>AMP (Устрицы): {tasteProfile.ampPercentOfNucleotides}%</span>
+            <span>AMP: {tasteProfile.ampPercentOfNucleotides}%</span>
           </span>
         </div>
       </div>
 
       {/* Sodium Bonus Banner */}
-      <div className="mt-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl p-2.5 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
-          <span className="text-xs text-cyan-200">
+      <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-2 flex items-center justify-between">
+        <div className="flex items-center space-x-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <span className="text-[11px] text-cyan-200">
             Эффект замещения соли:
           </span>
         </div>
-        <span className="text-xs font-mono font-bold text-cyan-300">
+        <span className="text-[11px] font-mono font-bold text-cyan-300">
           -{tasteProfile.saltReductionBonusPercent}% NaCl
         </span>
       </div>
 
-      {/* Interactive Formula Info Modal */}
+      {/* Formula Info Modal */}
       {showFormulaInfo && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#10151E] border border-zinc-700 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in text-left">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#0E1015] border border-white/[0.12] rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in text-left">
+            <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Calculator className="w-5 h-5 text-amber-400" />
-                <h3 className="font-display font-bold text-sm text-white">
-                  РАСШИФРОВКА ВСЕХ ПОКАЗАТЕЛЕЙ И ФОРМУЛ
+                <Calculator className="w-4 h-4 text-amber-400" />
+                <h3 className="font-semibold text-xs sm:text-sm text-white">
+                  Расшифровка показателей и формул
                 </h3>
               </div>
               <button
                 onClick={() => setShowFormulaInfo(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700"
+                className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-4 text-xs font-sans">
+            <div className="p-4 overflow-y-auto space-y-3 text-xs">
               {/* Formula 1 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-xl space-y-2">
+              <div className="bg-[#0C0E14] border border-white/[0.06] p-3 rounded-xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">Мультипликатор синергии ({tasteProfile.synergyMultiplier}×)</span>
-                  <span className="font-mono text-amber-400 text-[11px] bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">
+                  <span className="font-semibold text-white text-xs">Мультипликатор синергии ({tasteProfile.synergyMultiplier}×)</span>
+                  <span className="font-mono text-amber-400 text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                     y = u + 1218 · u · v
                   </span>
                 </div>
-                <p className="text-zinc-300 text-[11px]">
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
                   <strong>u</strong> = {tasteProfile.glutamateConcentrationPercent} г/дл (свободный L-глутамат).<br />
                   <strong>v</strong> = {tasteProfile.nucleotideConcentrationPercent} г/дл (5'-нуклеотиды: IMP + 2.3·GMP + 0.8·AMP).<br />
                   <strong>1218</strong> — константа аллостерического синергизма рецепторов языка T1R1/T1R3.<br />
@@ -288,51 +285,38 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
               </div>
 
               {/* Formula 2 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-xl space-y-2">
+              <div className="bg-[#0C0E14] border border-white/[0.06] p-3 rounded-xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">Послевкусие (~{tasteProfile.aftertasteHalfLifeSeconds}с)</span>
-                  <span className="font-mono text-rose-400 text-[11px] bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800">
+                  <span className="font-semibold text-white text-xs">Послевкусие (~{tasteProfile.aftertasteHalfLifeSeconds}с)</span>
+                  <span className="font-mono text-rose-400 text-[10px] bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
                     T1/2 = 45 + (Multi - 1)·15
                   </span>
                 </div>
-                <p className="text-zinc-300 text-[11px]">
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
                   Время сохранения вкусовой активации на вкусовых сосочках корня языка. Комплекс глутамата с IMP/GMP распадается в 4-5 раз медленнее соли и кислоты.
                 </p>
               </div>
 
               {/* Formula 3 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-xl space-y-2">
+              <div className="bg-[#0C0E14] border border-white/[0.06] p-3 rounded-xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">Снижение соли (-{tasteProfile.saltReductionBonusPercent}%)</span>
-                  <span className="font-mono text-cyan-400 text-[11px] bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">
+                  <span className="font-semibold text-white text-xs">Снижение соли (-{tasteProfile.saltReductionBonusPercent}%)</span>
+                  <span className="font-mono text-cyan-400 text-[10px] bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
                     ΔNaCl = min(38%, Score · 3.8%)
                   </span>
                 </div>
-                <p className="text-zinc-300 text-[11px]">
-                  Доказанный эффект: сильный умами-синергизм позволяет снизить добавление хлорида натрия (соли) на треть без потери соленого вкуса и аппетитности.
-                </p>
-              </div>
-
-              {/* Formula 4 */}
-              <div className="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">Вязкость Gouqian: {tasteProfile.viscosityLabel}</span>
-                  <span className="font-mono text-emerald-400 text-[11px] bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
-                    Starch = {tasteProfile.starchRatioPercent}%
-                  </span>
-                </div>
-                <p className="text-zinc-300 text-[11px]">
-                  Процент картофельного крахмала к объему жидкости. Обеспечивает зеркальное сцепление соуса с порами сейтана, доупи и фучжу.
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  Синергизм позволяет снизить добавление хлорида натрия (соли) на треть без потери соленого вкуса и аппетитности.
                 </p>
               </div>
             </div>
 
-            <div className="p-3 border-t border-zinc-800 bg-zinc-950 text-right">
+            <div className="p-3 border-t border-white/[0.08] bg-[#0C0E14] text-right">
               <button
                 onClick={() => setShowFormulaInfo(false)}
-                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-sm transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs transition-colors"
               >
-                Понятно
+                Закрыть
               </button>
             </div>
           </div>
@@ -341,3 +325,4 @@ export const UmamiRadar: React.FC<UmamiRadarProps> = ({ tasteProfile }) => {
     </div>
   );
 };
+

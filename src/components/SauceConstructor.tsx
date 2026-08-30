@@ -10,8 +10,10 @@ import {
   Sparkles, 
   Layers, 
   Check, 
-  ChevronRight,
-  Info
+  Search,
+  X,
+  Sliders,
+  Sparkle
 } from 'lucide-react';
 
 interface SauceConstructorProps {
@@ -34,55 +36,56 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
   portions
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAddModal, setShowAddModal] = useState(false);
 
   const pantryMap = new Map<string, PantryIngredient>();
   pantryList.forEach(p => pantryMap.set(p.id, p));
 
   const proteins = [
-    { id: 'seitan', name: 'Сейтан (Пшеничный глютен)', desc: 'Высокая пористость, требует плотного глазирования' },
-    { id: 'doupi', name: 'Доупи (Тофу-листы)', desc: 'Тонкая слоистая структура, впитывает Wanzhi' },
-    { id: 'fuzhu', name: 'Фучжу (Соевая спаржа / Юба)', desc: 'Шелковистая упругость, любит доубанцзян и чеснок' },
-    { id: 'potato_carrot', name: 'Овощи (Картофель & Морковь)', desc: 'Корнеплоды для тушения в рассоле и сое' }
+    { id: 'seitan', name: 'Сейтан', desc: 'Пшеничный глютен, требует густого Wanzhi' },
+    { id: 'doupi', name: 'Доупи', desc: 'Тофу-листы, мгновенно впитывают соус' },
+    { id: 'fuzhu', name: 'Фучжу', desc: 'Соевая спаржа / Юба, глубокое томление' },
+    { id: 'potato_carrot', name: 'Овощи', desc: 'Корнеплоды для тушения в рассоле' }
   ];
 
-  // Stage details
-  const stageMeta: Record<RecipeStage, { label: string; icon: React.ReactNode; color: string; desc: string }> = {
+  // Stage details in Linear styling
+  const stageMeta: Record<RecipeStage, { label: string; icon: React.ReactNode; badge: string; desc: string }> = {
     baoguo_aromatics: { 
       label: 'Фаза 1: Обжарка ароматики (Baoguo 爆锅)', 
-      icon: <Flame className="w-4 h-4 text-orange-400" />, 
-      color: 'border-orange-500/30 bg-orange-950/10',
-      desc: 'Закладывается в горячее масло на 15-30 секунд для экстракции эфиров'
+      icon: <Flame className="w-3.5 h-3.5 text-orange-400" />, 
+      badge: 'Ароматика',
+      desc: '15-30 сек в горячем масле'
     },
     seasoning_mix: { 
       label: 'Фаза 2: Соусная чаша (Wanzhi 碗汁)', 
-      icon: <Layers className="w-4 h-4 text-rose-400" />, 
-      color: 'border-rose-500/30 bg-rose-950/10',
-      desc: 'Смешивается заранее в миске со специями, глутаматом и вином'
+      icon: <Layers className="w-3.5 h-3.5 text-rose-400" />, 
+      badge: 'Соусная база',
+      desc: 'Смешивается заранее в миске'
     },
     liquid_base: { 
       label: 'Фаза 3: Жидкая среда / Бульон', 
-      icon: <Droplets className="w-4 h-4 text-cyan-400" />, 
-      color: 'border-cyan-500/30 bg-cyan-950/10',
-      desc: 'Вода, бульон или рассол для растворения аминокислот'
+      icon: <Droplets className="w-3.5 h-3.5 text-cyan-400" />, 
+      badge: 'Жидкая фаза',
+      desc: 'Растворение умами-кислот'
     },
     slurry_gouqian: { 
       label: 'Фаза 4: Крахмальная суспензия (Gouqian 勾芡)', 
-      icon: <Scale className="w-4 h-4 text-emerald-400" />, 
-      color: 'border-emerald-500/30 bg-emerald-950/10',
-      desc: 'Картофельный крахмал для клейстеризации и удержания соуса на белке'
+      icon: <Scale className="w-3.5 h-3.5 text-emerald-400" />, 
+      badge: 'Крахмал',
+      desc: 'Клейстеризация и глянец'
     },
     finish_mingyou: { 
       label: 'Фаза 5: Финишное масло (Mingyou 明油)', 
-      icon: <Sparkles className="w-4 h-4 text-amber-400" />, 
-      color: 'border-amber-500/30 bg-amber-950/10',
-      desc: 'Кунжутное масло после выключения огня для зеркального блеска'
+      icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" />, 
+      badge: 'Глянец',
+      desc: 'После выключения огня'
     },
     main_protein: { 
       label: 'Белковая основа', 
-      icon: <Layers className="w-4 h-4 text-purple-400" />, 
-      color: 'border-purple-500/30 bg-purple-950/10',
-      desc: 'Основной продукт'
+      icon: <Layers className="w-3.5 h-3.5 text-purple-400" />, 
+      badge: 'Белок',
+      desc: 'Основной компонент'
     }
   };
 
@@ -141,16 +144,26 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
   // Group current ingredients by stage
   const stages: RecipeStage[] = ['baoguo_aromatics', 'seasoning_mix', 'liquid_base', 'slurry_gouqian', 'finish_mingyou'];
 
+  const filteredPantry = pantryList.filter(item => {
+    const matchesCat = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesSearch = searchQuery === '' || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.chineseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Target Protein Selector */}
-      <div className="bg-[#10151E] border border-zinc-800/90 rounded-2xl p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono font-bold text-rose-400">МАТРИЦА БЕЛКА:</span>
-            <span className="text-xs text-zinc-400">Выберите продукт под который калибруется соус</span>
-          </div>
-          <span className="text-[11px] font-mono text-zinc-400">Порции: {portions}</span>
+    <div className="space-y-4">
+      {/* Target Protein Selector (Linear Pill Matrix) */}
+      <div className="p-3 sm:p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl">
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-[11px] font-mono font-medium text-zinc-400 uppercase tracking-wider">
+            Матрица белка
+          </span>
+          <span className="text-[10px] font-mono text-zinc-500">
+            {portions} порции
+          </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -161,15 +174,15 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                 key={p.id}
                 id={`protein-btn-${p.id}`}
                 onClick={() => setSelectedProtein(p.id)}
-                className={`text-left p-2.5 rounded-xl border transition-all ${
+                className={`text-left p-2.5 rounded-lg border transition-all ${
                   isSelected
-                    ? 'bg-rose-500/15 border-rose-500 text-white shadow-sm'
-                    : 'bg-zinc-900/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    ? 'bg-white/[0.08] border-white/[0.22] text-white shadow-sm ring-1 ring-white/10'
+                    : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/[0.12] hover:text-zinc-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-xs text-white">{p.name.split(' ')[0]}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-rose-400" />}
+                  <span className="font-semibold text-xs text-white">{p.name}</span>
+                  {isSelected && <Check className="w-3 h-3 text-rose-400" />}
                 </div>
                 <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">{p.desc}</p>
               </button>
@@ -185,8 +198,8 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
         pantryList={pantryList}
       />
 
-      {/* Main Ingredient Stage Modules */}
-      <div className="space-y-4">
+      {/* Main Ingredient Stage Modules (Linear Stack) */}
+      <div className="space-y-3">
         {stages.map(stageKey => {
           const stageItems = ingredients.filter(i => i.stage === stageKey);
           const meta = stageMeta[stageKey];
@@ -195,21 +208,23 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
           return (
             <div 
               key={stageKey}
-              className={`border rounded-2xl p-4 transition-all ${meta.color}`}
+              className="rounded-xl bg-white/[0.02] border border-white/[0.08] p-3 sm:p-4 backdrop-blur-xl space-y-2.5"
             >
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800/60">
+              {/* Stage Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                 <div className="flex items-center space-x-2">
                   {meta.icon}
-                  <h4 className="font-display font-semibold text-xs text-white tracking-wide">
+                  <h4 className="font-semibold text-xs text-white">
                     {meta.label}
                   </h4>
                 </div>
-                <span className="text-[11px] text-zinc-400 font-sans hidden sm:inline">
+                <span className="text-[10px] font-mono text-zinc-400 hidden sm:inline">
                   {meta.desc}
                 </span>
               </div>
 
-              <div className="space-y-2.5">
+              {/* Items List */}
+              <div className="space-y-2">
                 {stageItems.map(item => {
                   const ing = pantryMap.get(item.ingredientId);
                   if (!ing) return null;
@@ -220,9 +235,9 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                   return (
                     <div 
                       key={item.ingredientId}
-                      className="bg-zinc-900/90 border border-zinc-800/90 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-zinc-700 transition-colors"
+                      className="bg-[#0C0E14] border border-white/[0.06] hover:border-white/[0.12] rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all group"
                     >
-                      {/* Ingredient Name & Biochemical Tag */}
+                      {/* Ingredient Info & Chemistry */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
                           <span className="font-medium text-xs text-white truncate">
@@ -232,14 +247,14 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                             {ing.chineseName.split(' ')[0]}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-3 mt-1 text-[11px] text-zinc-400">
-                          {ing.freeGlutamate > 500 && (
-                            <span className="text-rose-400 font-mono">
+                        <div className="flex items-center space-x-2.5 mt-1 text-[10px] text-zinc-400 font-mono">
+                          {ing.freeGlutamate > 100 && (
+                            <span className="text-rose-400">
                               Glu: {ing.freeGlutamate} мг
                             </span>
                           )}
                           {(ing.imp > 0 || ing.gmp > 0 || ing.amp > 0) && (
-                            <span className="text-amber-400 font-mono">
+                            <span className="text-amber-400">
                               Нуклеотиды: {ing.imp + ing.gmp + ing.amp} мг
                             </span>
                           )}
@@ -251,17 +266,19 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                         </div>
                       </div>
 
-                      {/* Controls */}
-                      <div className="flex items-center space-x-3 self-end sm:self-center">
-                        <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-1">
+                      {/* Controls (Steppers & Slider) */}
+                      <div className="flex items-center space-x-2 self-end sm:self-center">
+                        {/* Stepper with accessible touch targets */}
+                        <div className="flex items-center bg-black/40 border border-white/[0.08] rounded-md p-0.5">
                           <button
                             onClick={() => updateAmount(item.ingredientId, -step)}
-                            className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                            aria-label={`Уменьшить ${ing.name}`}
+                            className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
                           >
                             -
                           </button>
-                          <div className="w-16 text-center">
-                            <span className="font-mono text-xs font-bold text-white">
+                          <div className="w-14 sm:w-16 text-center">
+                            <span className="font-mono text-xs font-semibold text-white">
                               {scaledAmount}
                             </span>
                             <span className="text-[10px] text-zinc-400 ml-1">
@@ -270,13 +287,14 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                           </div>
                           <button
                             onClick={() => updateAmount(item.ingredientId, step)}
-                            className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                            aria-label={`Увеличить ${ing.name}`}
+                            className="w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
                           >
                             +
                           </button>
                         </div>
 
-                        {/* Slider for smooth dragging */}
+                        {/* Drag Slider on Desktop */}
                         <input 
                           type="range"
                           min="0"
@@ -284,15 +302,16 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                           step={step}
                           value={item.amount}
                           onChange={(e) => setExactAmount(item.ingredientId, parseFloat(e.target.value))}
-                          className="w-20 hidden lg:block accent-rose-500"
+                          className="w-16 hidden lg:block accent-rose-500 cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
                         />
 
+                        {/* Delete Button */}
                         <button
                           onClick={() => removeIngredient(item.ingredientId)}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
-                          title="Удалить из рецепта"
+                          className="p-1.5 rounded-md text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          title="Удалить компонент"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -307,62 +326,92 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
         <button
           onClick={() => setShowAddModal(true)}
           id="add-pantry-item-to-recipe-btn"
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-800 hover:border-rose-500/50 bg-zinc-900/40 hover:bg-rose-950/10 text-zinc-300 hover:text-rose-300 text-xs font-semibold flex items-center justify-center space-x-2 transition-all"
+          className="w-full py-2.5 rounded-xl border border-dashed border-white/[0.12] hover:border-white/[0.24] bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium flex items-center justify-center space-x-2 transition-all shadow-sm"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5 text-zinc-400" />
           <span>Добавить компонент из кладовой ({pantryList.length} доступно)</span>
         </button>
       </div>
 
-      {/* Add Modal */}
+      {/* Add Modal (Linear Drawer / Overlay) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#10151E] border border-zinc-800 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="bg-[#0E1015] border border-white/[0.12] rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Plus className="w-5 h-5 text-rose-400" />
-                <h3 className="font-display font-bold text-sm text-white">
-                  ДОБАВИТЬ ИЗ МОЕЙ КЛАДОВОЙ
+                <div className="w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center text-white">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="font-semibold text-xs sm:text-sm text-white">
+                  Добавить компонент в соус
                 </h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-xs text-zinc-400 hover:text-white px-2 py-1 bg-zinc-800 rounded-lg"
+                className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
-                Закрыть
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Category Filter */}
-            <div className="p-3 border-b border-zinc-800/80 flex items-center space-x-2 overflow-x-auto text-xs">
-              {['all', 'sauces', 'boosters', 'dry', 'soy_seitan', 'aromatics', 'produce'].map(cat => (
+            {/* Search Input Bar */}
+            <div className="p-3 border-b border-white/[0.06]">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Поиск по названию или иероглифам..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-black/40 border border-white/[0.08] rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="px-3 py-2 border-b border-white/[0.06] flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-xs">
+              {[
+                { id: 'all', label: 'Все' },
+                { id: 'sauces', label: 'Соусы' },
+                { id: 'boosters', label: 'Умами-бустеры' },
+                { id: 'dry', label: 'Специи/Крахмал' },
+                { id: 'soy_seitan', label: 'Соя/Сейтан' },
+                { id: 'aromatics', label: 'Ароматика' },
+                { id: 'produce', label: 'Овощи' }
+              ].map(cat => (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-lg capitalize whitespace-nowrap transition-colors ${
-                    selectedCategory === cat ? 'bg-rose-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-2.5 py-1 rounded-md whitespace-nowrap text-[11px] font-medium transition-colors ${
+                    selectedCategory === cat.id 
+                      ? 'bg-white/[0.12] text-white border border-white/[0.16]' 
+                      : 'bg-white/[0.02] text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  {cat === 'all' ? 'Все' : cat === 'sauces' ? 'Соусы' : cat === 'boosters' ? 'Умами-бустеры' : cat === 'dry' ? 'Специи/Крахмал' : cat === 'soy_seitan' ? 'Соя/Сейтан' : cat === 'aromatics' ? 'Ароматика' : 'Овощи'}
+                  {cat.label}
                 </button>
               ))}
             </div>
 
             {/* List */}
-            <div className="p-4 overflow-y-auto space-y-2 flex-1">
-              {pantryList
-                .filter(item => selectedCategory === 'all' || item.category === selectedCategory)
-                .map(item => {
+            <div className="p-3 overflow-y-auto space-y-1.5 flex-1">
+              {filteredPantry.length === 0 ? (
+                <div className="text-center py-8 text-xs text-zinc-500">
+                  Компоненты не найдены
+                </div>
+              ) : (
+                filteredPantry.map(item => {
                   const isAdded = ingredients.some(i => i.ingredientId === item.id);
                   return (
                     <div
                       key={item.id}
-                      className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between hover:border-zinc-700 transition-colors"
+                      className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between hover:border-white/[0.12] hover:bg-white/[0.04] transition-all"
                     >
-                      <div className="pr-3">
+                      <div className="pr-3 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-xs text-white">{item.name}</span>
-                          <span className="text-[10px] font-mono text-zinc-500">{item.chineseName}</span>
+                          <span className="font-medium text-xs text-white truncate">{item.name}</span>
+                          <span className="text-[10px] font-mono text-zinc-400">{item.chineseName}</span>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">{item.description}</p>
                       </div>
@@ -370,17 +419,18 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
                       <button
                         onClick={() => addIngredientToRecipe(item)}
                         disabled={isAdded}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-all ${
                           isAdded
-                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                            : 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm'
+                            ? 'bg-white/[0.04] text-zinc-600 border border-transparent cursor-not-allowed'
+                            : 'bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-sm border border-rose-500/40'
                         }`}
                       >
                         {isAdded ? 'Добавлен' : '+ В соус'}
                       </button>
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
           </div>
         </div>
@@ -388,3 +438,4 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
     </div>
   );
 };
+

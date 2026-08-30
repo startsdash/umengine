@@ -236,28 +236,28 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner */}
-      <div className="bg-[#10151E] border border-zinc-800/90 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.08] p-4 sm:p-5 backdrop-blur-xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="max-w-2xl">
-            <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono mb-2">
-              <Sparkles className="w-4 h-4" />
-              <span>НЕЙРОСЕТЕВОЙ МОЛЕКУЛЯРНЫЙ СИНТЕЗАТОР</span>
+            <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono mb-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="tracking-wider uppercase text-[10px]">Нейросетевой молекулярный синтезатор</span>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight">
               AI Шеф-Инженер Китайской Кухни
             </h2>
-            <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-              Сгенерируйте уникальную формулу соуса или бульона под вашу конкретную задачу, доступные запасы в кладовой и целевой белок (сейтан, доупи, фучжу).
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              Сгенерируйте точную формулу соуса или бульона под целевой белок (сейтан, доупи, фучжу) и запасы в кладовой.
             </p>
           </div>
 
           {/* Model Selector Bar */}
-          <div className="bg-zinc-900/90 border border-zinc-800 p-3 rounded-2xl flex flex-col gap-2 min-w-[280px]">
+          <div className="bg-[#0C0E14] border border-white/[0.08] p-2.5 rounded-xl flex flex-col gap-2 min-w-[260px] sm:min-w-[280px]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1.5 font-bold uppercase tracking-wider">
-                <Cpu className="w-3.5 h-3.5 text-rose-400" />
+              <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1.5 font-medium uppercase tracking-wider">
+                <Cpu className="w-3 h-3 text-rose-400" />
                 Модель Google
               </span>
               <button
@@ -265,10 +265,10 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                 disabled={loadingModels}
                 title="Обновить список актуальных моделей из Google API"
                 id="refresh-models-btn"
-                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-all text-[10px] flex items-center gap-1"
+                className="px-1.5 py-0.5 rounded-md text-zinc-400 hover:text-white bg-white/[0.04] border border-white/[0.08] transition-all text-[10px] flex items-center gap-1"
               >
-                <RefreshCw className={`w-3 h-3 ${loadingModels ? 'animate-spin text-rose-400' : ''}`} />
-                <span className="hidden sm:inline">Google API</span>
+                <RefreshCw className={`w-2.5 h-2.5 ${loadingModels ? 'animate-spin text-rose-400' : ''}`} />
+                <span className="text-[10px]">API</span>
               </button>
             </div>
 
@@ -278,7 +278,7 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                 type="button"
                 onClick={() => setShowModelDrawer(!showModelDrawer)}
                 id="open-model-selector-btn"
-                className="w-full px-3 py-2 bg-zinc-950/90 border border-zinc-700/80 hover:border-rose-500/60 rounded-xl text-left flex items-center justify-between gap-2 transition-all shadow-inner group"
+                className="w-full px-2.5 py-1.5 bg-black/40 border border-white/[0.08] hover:border-white/[0.18] rounded-lg text-left flex items-center justify-between gap-2 transition-all group"
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -286,47 +286,47 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   <div className="truncate">
-                    <div className="text-xs font-semibold text-white group-hover:text-rose-300 transition-colors truncate">
+                    <div className="text-xs font-medium text-white group-hover:text-rose-300 transition-colors truncate">
                       {currentModelInfo.displayName}
                     </div>
-                    <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-2">
-                      <span>Скорость: {currentModelInfo.speed}</span>
+                    <div className="text-[9px] text-zinc-500 font-mono flex items-center gap-1.5">
+                      <span>{currentModelInfo.speed}</span>
                       <span>•</span>
-                      <span>Логика: {currentModelInfo.reasoning}</span>
+                      <span>{currentModelInfo.reasoning}</span>
                     </div>
                   </div>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform shrink-0 ${showModelDrawer ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform shrink-0 ${showModelDrawer ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Models Menu / Drawer */}
               {showModelDrawer && (
-                <div className="absolute right-0 top-full mt-2 w-full sm:w-96 bg-[#0E121A] border border-zinc-700 rounded-2xl shadow-2xl z-50 p-3 space-y-3 animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                    <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase">
-                      Актуальные модели Google ({availableModels.length})
+                <div className="absolute right-0 top-full mt-2 w-full sm:w-96 bg-[#0E1015] border border-white/[0.12] rounded-xl shadow-2xl z-50 p-3 space-y-2.5 animate-fade-in backdrop-blur-2xl">
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                    <span className="text-[10px] font-mono font-medium text-zinc-400 uppercase">
+                      Модели ({availableModels.length})
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 font-mono">
-                      {modelsSource === 'google_api' ? 'Live Google API' : 'Google Gemini'}
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                      {modelsSource === 'google_api' ? 'Live API' : 'Curated'}
                     </span>
                   </div>
 
                   {/* Filter Pills */}
-                  <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
                     {[
                       { id: 'all', label: 'Все' },
                       { id: 'flagship', label: 'Флагманы' },
-                      { id: 'reasoning', label: 'Pro/Логика' },
-                      { id: 'fast', label: 'Flash/Быстрые' }
+                      { id: 'reasoning', label: 'Pro' },
+                      { id: 'fast', label: 'Flash' }
                     ].map(tab => (
                       <button
                         key={tab.id}
                         type="button"
                         onClick={() => setFilterCategory(tab.id)}
-                        className={`text-[10px] px-2.5 py-1 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-medium transition-colors whitespace-nowrap ${
                           filterCategory === tab.id 
-                            ? 'bg-rose-600 text-white' 
-                            : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                            ? 'bg-white/[0.14] text-white border border-white/[0.18]' 
+                            : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.04]'
                         }`}
                       >
                         {tab.label}
@@ -335,7 +335,7 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                   </div>
 
                   {/* Model List */}
-                  <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                  <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar">
                     {filteredModels.map(m => {
                       const isSelected = m.id === selectedModel;
                       return (
@@ -346,36 +346,30 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                             setSelectedModel(m.id);
                             setShowModelDrawer(false);
                           }}
-                          className={`w-full p-2.5 rounded-xl text-left transition-all flex flex-col gap-1 border ${
+                          className={`w-full p-2 rounded-lg text-left transition-all flex flex-col gap-0.5 border ${
                             isSelected 
-                              ? 'bg-rose-950/40 border-rose-500/80 text-white' 
-                              : 'bg-zinc-900/70 border-zinc-800/80 hover:bg-zinc-800/70 text-zinc-300'
+                              ? 'bg-rose-500/[0.08] border-rose-500/40 text-white' 
+                              : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] text-zinc-300'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 font-bold text-xs">
+                            <div className="flex items-center gap-1.5 font-medium text-xs">
                               {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
                               <span>{m.displayName}</span>
                             </div>
                             {m.isRecommended && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
                                 TOP
                               </span>
                             )}
                           </div>
-                          <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">
+                          <p className="text-[10px] text-zinc-400 line-clamp-1 leading-relaxed">
                             {m.description}
                           </p>
-                          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-500 pt-0.5">
-                            <span className="flex items-center gap-0.5">
-                              <Zap className="w-2.5 h-2.5 text-amber-400" />
-                              {m.speed}
-                            </span>
+                          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-500">
+                            <span>{m.speed}</span>
                             <span>•</span>
-                            <span className="flex items-center gap-0.5">
-                              <Brain className="w-2.5 h-2.5 text-rose-400" />
-                              {m.reasoning}
-                            </span>
+                            <span>{m.reasoning}</span>
                             <span>•</span>
                             <span className="text-zinc-600 truncate">{m.id}</span>
                           </div>
@@ -390,37 +384,37 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
         </div>
 
         {/* Input Bar */}
-        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             placeholder="Опишите желаемый соус (напр. 'Глубокий пряный умами для жареного сейтана')..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSynthesize()}
-            className="flex-1 px-4 py-3 bg-zinc-900/90 border border-zinc-800 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 transition-colors"
+            className="flex-1 px-3 py-2.5 bg-black/50 border border-white/[0.08] focus:border-rose-500/60 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors"
           />
           <button
             onClick={() => handleSynthesize()}
             disabled={loading || !prompt.trim()}
             id="synthesize-sauce-btn"
-            className="px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-white/[0.04] disabled:text-zinc-600 text-white font-medium text-xs flex items-center justify-center space-x-1.5 transition-all shrink-0"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Вычисление синергии ({currentModelInfo.displayName})...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Синтез...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
-                <span>Синтезировать ({currentModelInfo.id.replace('gemini-', '')})</span>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Синтезировать</span>
               </>
             )}
           </button>
         </div>
 
         {/* Sample Prompt Chips */}
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-mono text-zinc-500 flex items-center mr-1">
             <Lightbulb className="w-3 h-3 mr-1 text-amber-400" />
             Примеры:
@@ -432,7 +426,7 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                 setPrompt(p);
                 handleSynthesize(p);
               }}
-              className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition-colors text-left"
+              className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.06] text-zinc-400 hover:text-white hover:border-white/[0.14] transition-colors text-left"
             >
               {p}
             </button>
@@ -441,40 +435,40 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-950/30 border border-rose-800/50 rounded-2xl text-xs text-rose-300 flex items-start gap-2">
+        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-start gap-2">
           <Info className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <div className="font-bold">Ошибка генерации</div>
-            <div className="text-rose-300/90 mt-0.5">{error}</div>
+            <div className="font-semibold">Ошибка генерации</div>
+            <div className="text-rose-300/90 mt-0.5 text-[11px]">{error}</div>
           </div>
         </div>
       )}
 
       {/* Result Display */}
       {result && (
-        <div className="bg-[#10151E] border border-rose-500/30 rounded-2xl p-6 shadow-2xl space-y-6 animate-fade-in">
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.12] p-4 sm:p-5 shadow-2xl space-y-4 animate-fade-in backdrop-blur-xl">
           {/* Result Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
                   AI СИНТЕЗ УСПЕШЕН
                 </span>
                 {result.usedModel && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1">
-                    <Cpu className="w-3 h-3 text-rose-400" />
-                    Модель: {result.usedModel}
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/[0.04] text-zinc-300 border border-white/[0.08] flex items-center gap-1">
+                    <Cpu className="w-2.5 h-2.5 text-rose-400" />
+                    {result.usedModel}
                   </span>
                 )}
                 {result.note && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/40 flex items-center gap-1">
-                    <Info className="w-3 h-3 text-amber-400" />
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                    <Info className="w-2.5 h-2.5 text-amber-400" />
                     {result.note}
                   </span>
                 )}
                 <span className="font-mono text-xs text-zinc-400">{result.chineseTitle} ({result.pinyin})</span>
               </div>
-              <h3 className="font-display font-bold text-xl text-white mt-1">
+              <h3 className="font-semibold text-base sm:text-lg text-white mt-1">
                 {result.recipeTitle}
               </h3>
             </div>
@@ -482,36 +476,36 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
             <button
               onClick={handleLoadToWorkbench}
               id="apply-ai-recipe-to-workbench"
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition-all self-start sm:self-center"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-all self-start sm:self-center"
             >
               <span>Загрузить в Конструктор</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Biochemical Rationale */}
-          <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-1">
-            <span className="font-mono text-rose-400 font-bold block text-[10px]">
-              БИОХИМИЧЕСКОЕ ОБОСНОВАНИЕ:
+          <div className="p-3 rounded-lg bg-[#0C0E14] border border-white/[0.06] text-xs text-zinc-300 space-y-1">
+            <span className="font-mono text-rose-400 font-medium block text-[10px] uppercase">
+              Биохимическое обоснование:
             </span>
-            <p className="leading-relaxed">{result.biochemicalRationale}</p>
+            <p className="leading-relaxed text-zinc-400 text-[11px]">{result.biochemicalRationale}</p>
           </div>
 
           {/* Ingredients & Steps Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Ingredients */}
-            <div className="space-y-3">
-              <h4 className="font-display font-bold text-xs text-white flex items-center space-x-1.5">
-                <FlaskConical className="w-4 h-4 text-amber-400" />
+            <div className="space-y-2">
+              <h4 className="font-medium text-xs text-white flex items-center space-x-1.5">
+                <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
                 <span>Ингредиентный каркас:</span>
               </h4>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {result.ingredients?.map((ing: any, idx: number) => (
-                  <div key={idx} className="p-2.5 bg-zinc-900/70 border border-zinc-800 rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-medium text-white">{ing.name}</span>
+                  <div key={idx} className="p-2 bg-[#0C0E14] border border-white/[0.06] rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-zinc-200">{ing.name}</span>
                     <div className="flex items-center space-x-2">
                       <span className="text-[10px] text-zinc-500 font-mono">{ing.stage}</span>
-                      <span className="font-mono font-bold text-rose-400">{ing.amount}</span>
+                      <span className="font-mono font-semibold text-rose-400">{ing.amount}</span>
                     </div>
                   </div>
                 ))}
@@ -519,16 +513,16 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
             </div>
 
             {/* Steps */}
-            <div className="space-y-3">
-              <h4 className="font-display font-bold text-xs text-white flex items-center space-x-1.5">
-                <Layers className="w-4 h-4 text-emerald-400" />
+            <div className="space-y-2">
+              <h4 className="font-medium text-xs text-white flex items-center space-x-1.5">
+                <Layers className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Пошаговый протокол:</span>
               </h4>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {result.steps?.map((step: string, idx: number) => (
-                  <div key={idx} className="p-2.5 bg-zinc-900/70 border border-zinc-800 rounded-xl flex items-start space-x-2.5 text-xs text-zinc-300">
-                    <span className="font-mono font-bold text-rose-400 shrink-0">{idx + 1}.</span>
-                    <span className="leading-relaxed">{step}</span>
+                  <div key={idx} className="p-2 bg-[#0C0E14] border border-white/[0.06] rounded-lg flex items-start space-x-2 text-xs text-zinc-300">
+                    <span className="font-mono font-semibold text-rose-400 shrink-0">{idx + 1}.</span>
+                    <span className="leading-relaxed text-zinc-300 text-[11px]">{step}</span>
                   </div>
                 ))}
               </div>
@@ -537,12 +531,12 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
 
           {/* Pro Tips */}
           {result.proTips && result.proTips.length > 0 && (
-            <div className="pt-3 border-t border-zinc-800 space-y-1.5">
-              <span className="text-[10px] font-mono text-zinc-400 font-bold block">СОВЕТЫ ШЕФ-ИНЖЕНЕРА:</span>
+            <div className="pt-2.5 border-t border-white/[0.06] space-y-1">
+              <span className="text-[10px] font-mono text-zinc-400 font-medium block uppercase">СОВЕТЫ ШЕФ-ИНЖЕНЕРА:</span>
               <ul className="space-y-1 text-xs text-zinc-400">
                 {result.proTips.map((tip: string, idx: number) => (
-                  <li key={idx} className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                  <li key={idx} className="flex items-start space-x-1.5 text-[11px]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
                     <span>{tip}</span>
                   </li>
                 ))}

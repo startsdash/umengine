@@ -59,31 +59,31 @@ export const ScienceCompendium: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner */}
-      <div className="bg-[#10151E] border border-zinc-800/90 rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.08] p-4 sm:p-5 backdrop-blur-xl relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono mb-2">
-              <Atom className="w-4 h-4" />
-              <span>НАУЧНО-ДОКАЗАТЕЛЬНАЯ БАЗА</span>
+            <div className="flex items-center space-x-2 text-rose-400 text-xs font-mono mb-1.5">
+              <Atom className="w-3.5 h-3.5" />
+              <span className="tracking-wider uppercase text-[10px]">Научно-доказательная база</span>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-semibold text-white tracking-tight">
               Наука об Умами & Молекулярный Синергизм
             </h2>
-            <p className="text-xs text-zinc-400 mt-1">
-              Физиология восприятия, аллостерические рецепторы T1R1/T1R3, интерактивный глоссарий и исследования Yamaguchi & Ninomiya (2000).
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Физиология восприятия, аллостерические рецепторы T1R1/T1R3 и исследования Yamaguchi & Ninomiya (2000).
             </p>
           </div>
 
           {/* Primary View Switcher */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800 self-start lg:self-auto">
+          <div className="flex flex-wrap items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/[0.08] self-start lg:self-auto">
             <button
               onClick={() => setActiveTab('papers')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
                 activeTab === 'papers'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                  ? 'bg-white/[0.14] text-white border border-white/[0.16]'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -91,25 +91,25 @@ export const ScienceCompendium: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('glossary')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
                 activeTab === 'glossary'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                  ? 'bg-white/[0.14] text-white border border-white/[0.16]'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
-              <span>Интерактивный Глоссарий ({GLOSSARY_TERMS.length})</span>
+              <span>Глоссарий ({GLOSSARY_TERMS.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('nucleotides')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
                 activeTab === 'nucleotides'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                  ? 'bg-white/[0.14] text-white border border-white/[0.16]'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Dna className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Нуклеотиды (IMP/GMP/AMP)</span>
+              <span>Нуклеотиды</span>
             </button>
           </div>
         </div>
