@@ -1269,6 +1269,8 @@ ${JSON.stringify(availablePantryBrief)}
       console.log(`Umami Engineer Server running on http://0.0.0.0:${PORT}`);
     });
   }
+
+  return app;
 }
 
 let appPromise: Promise<any> | null = null;
