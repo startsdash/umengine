@@ -1,13 +1,10 @@
 let appPromise: Promise<any> | null = null;
 
 async function init(): Promise<any> {
-  try {
-    const mod = await import('../server');
-    return await mod.getApp();
-  } catch (err: any) {
-    console.error('SERVER INIT FATAL:', err?.stack || err);
-    throw err;
-  }
+  const mod: any = await import('../dist/server.cjs');
+  const getApp = mod.getApp || mod.default?.getApp;
+  if (!getApp) throw new Error('getApp not found in server bundle. keys: ' + Object.keys(mod).slice(0, 10).join(','));
+  return await getApp();
 }
 
 export default async function handler(req: any, res: any) {
