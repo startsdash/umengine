@@ -147,4 +147,53 @@ export interface PlaygroundRecipe {
   isCustomScraped?: boolean;
 }
 
-export type ActiveTab = 'constructor' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol' | 'playground';
+export type ProteinCategory = 
+  | 'meat' 
+  | 'poultry' 
+  | 'eggs' 
+  | 'seafood' 
+  | 'plant_soy_gluten' 
+  | 'fungi';
+
+export type AbsorptionArchetype = 
+  | 'sponge'       // Губка: пористая, высокая впитываемость, требует умеренного крахмала и больше жидкой базы
+  | 'silk_coating' // Шелк: гладкая поверхность, соус должен обволакивать зеркальной пленкой (Coating Gouqian)
+  | 'fibrous'      // Волокнистая: мышечные волокна, требуется бархатирование Shang Jiang
+  | 'emulsion_oil' // Масляно-яичная: поглощает до 30-40% ароматического масла, коагуляция белка
+  | 'gel_cellular' // Клеточно-гелевая (грибы, кальмары): отдача сока, богатый нуклеотидный фон;
+
+export interface ProteinMatrixItem {
+  id: string;
+  name: string;
+  chineseName: string;
+  pinyin?: string;
+  category: ProteinCategory;
+  absorptionArchetype: AbsorptionArchetype;
+  absorptionLabel: string;
+  physicsDescription: string;
+  // Natural Umami Precursors (mg / 100g)
+  baselineGlutamateMg: number;
+  baselineImpMg: number; // Inosine monophosphate
+  baselineGmpMg: number; // Guanosine monophosphate
+  dominantNucleotide: 'IMP' | 'GMP' | 'balanced' | 'none';
+  moistureTendency: 'releases_water' | 'absorbs_liquid' | 'balanced' | 'emulsifies';
+  // Wok technique and preparation
+  prepTechnique: {
+    chineseTerm: string;
+    name: string;
+    marinade: string;
+    thermalWokTime: string;
+    biochemicalGoal: string;
+  };
+  // How to tune the sauce for this protein
+  sauceAdjustment: {
+    starchDeltaG: number; // +2g for slippery coating, -1g for sponges
+    liquidDeltaMl: number; // +30ml for sponge, 0 or -10ml for high-moisture
+    recommendedSauceCategory: SauceArchetype['category'];
+    chefNotes: string;
+  };
+  culinaryPairings: string[];
+  scientificNotes: string;
+}
+
+export type ActiveTab = 'constructor' | 'protein_matrix' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol' | 'playground';

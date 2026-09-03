@@ -21,6 +21,7 @@ import { ScienceCompendium } from './components/ScienceCompendium';
 import { AiSynthesizer } from './components/AiSynthesizer';
 import { Playground } from './components/Playground';
 import { LabExportModal } from './components/LabExportModal';
+import { ProteinMatrixExplorer } from './components/ProteinMatrixExplorer';
 
 export const App: React.FC = () => {
   // Navigation State
@@ -308,6 +309,18 @@ export const App: React.FC = () => {
           </div>
         )}
 
+        {/* TAB: PROTEIN MATRIX & BIOCHEMICAL ATLAS */}
+        {activeTab === 'protein_matrix' && (
+          <div className="animate-fade-in">
+            <ProteinMatrixExplorer
+              onSelectProteinForConstructor={(proteinId) => {
+                setSelectedProtein(proteinId);
+                setActiveTab('constructor');
+              }}
+            />
+          </div>
+        )}
+
         {/* TAB 2: PRESET LIBRARY (INCLUDING POSTGRESQL CUSTOM FORMULAS) */}
         {activeTab === 'library' && (
           <div className="animate-fade-in">
@@ -327,6 +340,7 @@ export const App: React.FC = () => {
               pantryList={pantryList}
               tasteProfile={tasteProfile}
               onLoadRecipeToConstructor={handleLoadPlaygroundRecipe}
+              onSaveSauceToDb={handleSaveSauceToDb}
             />
           </div>
         )}

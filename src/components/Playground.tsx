@@ -4,9 +4,11 @@ import {
   PlaygroundRecipe, 
   RecipeIngredient, 
   PantryIngredient, 
-  TasteProfile 
+  TasteProfile,
+  SauceArchetype
 } from '../types';
 import { INITIAL_PLAYGROUND_ARTICLES, INITIAL_PLAYGROUND_RECIPES } from '../data/playgroundData';
+import { SauceProfileModal } from './SauceProfileModal';
 import ReactMarkdown from 'react-markdown';
 import { 
   Globe, 
@@ -34,13 +36,15 @@ import {
   Info,
   Sliders,
   ChevronDown,
-  Languages
+  Languages,
+  Database
 } from 'lucide-react';
 
 interface PlaygroundProps {
   pantryList: PantryIngredient[];
   tasteProfile: TasteProfile;
   onLoadRecipeToConstructor: (ingredients: RecipeIngredient[], title: string) => void;
+  onSaveSauceToDb?: (sauce: Partial<SauceArchetype>) => Promise<boolean>;
 }
 
 type SubTab = 'articles' | 'recipes' | 'scraper';
@@ -48,7 +52,8 @@ type SubTab = 'articles' | 'recipes' | 'scraper';
 export const Playground: React.FC<PlaygroundProps> = ({
   pantryList,
   tasteProfile,
-  onLoadRecipeToConstructor
+  onLoadRecipeToConstructor,
+  onSaveSauceToDb
 }) => {
   const [subTab, setSubTab] = useState<SubTab>('articles');
 
@@ -175,6 +180,102 @@ export const Playground: React.FC<PlaygroundProps> = ({
 
   const [activeLangArticle, setActiveLangArticle] = useState<Record<string, 'original' | 'ru'>>({});
   const [activeLangRecipe, setActiveLangRecipe] = useState<Record<string, 'original' | 'ru'>>({});
+
+  // Sauce Profile & Extraction States
+  const [selectedSauceForProfile, setSelectedSauceForProfile] = useState<SauceArchetype | null>(null);
+  const [isExtractingSauce, setIsExtractingSauce] = useState<boolean>(false);
+  const [extractSauceTargetId, setExtractSauceTargetId] = useState<string | null>(null);
+
+  // Extract Sauce Profile Handler (calls /api/sauce/extract)
+  const handleExtractSauce = async (params: {
+    sourceText: string;
+    title: string;
+    sourceUrl?: string;
+    type?: 'article' | 'recipe';
+    targetId?: string;
+  }) => {
+    setIsExtractingSauce(true);
+    if (params.targetId) setExtractSauceTargetId(params.targetId);
+    try {
+      const res = await fetch('/api/sauce/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceText: params.sourceText,
+          title: params.title,
+          sourceUrl: params.sourceUrl || '',
+          type: params.type || 'article',
+          pantryList: pantryList.map(p => ({
+            id: p.id,
+            name: p.name,
+            chineseName: p.chineseName,
+            category: p.category,
+            defaultUnit: p.defaultUnit
+          }))
+        })
+      });
+
+      const resText = await res.text();
+      let data: any = null;
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseErr) {
+        console.warn('Extract sauce parse error:', parseErr);
+      }
+
+      if (data?.sauceProfile) {
+        setSelectedSauceForProfile(data.sauceProfile);
+        setTranslationToast(`Профиль соуса «${data.sauceProfile.title}» успешно сформирован!`);
+      } else {
+        throw new Error(data?.error || 'Не удалось извлечь соус');
+      }
+    } catch (err: any) {
+      console.error('Sauce extraction error:', err);
+      setTranslationToast(`Ошибка извлечения: ${err.message || 'Попробуйте позже'}`);
+    } finally {
+      setIsExtractingSauce(false);
+      setExtractSauceTargetId(null);
+      setTimeout(() => setTranslationToast(null), 4000);
+    }
+  };
+
+  // Convert PlaygroundRecipe to SauceArchetype to inspect in modal
+  const handleOpenRecipeSauceProfile = (recipe: PlaygroundRecipe) => {
+    const convertedSauce: SauceArchetype = {
+      id: recipe.id,
+      title: recipe.title,
+      chineseTitle: recipe.chineseTitle || '',
+      pinyin: recipe.pinyin || '',
+      category: (recipe.category as any) || 'wanzhi_brown',
+      subtitle: recipe.category,
+      summary: recipe.summary,
+      scientificBreakdown: recipe.synergyEstimate || 'Биохимический баланс соуса на основе свободных аминокислот и нуклеотидов.',
+      targetProteins: ['doupi', 'seitan', 'tofu'],
+      defaultPortions: 2,
+      ingredients: recipe.parsedIngredients && recipe.parsedIngredients.length > 0 ? recipe.parsedIngredients : [
+        { ingredientId: 'light_soy', amount: 15, unit: 'ml', stage: 'seasoning_mix' },
+        { ingredientId: 'dark_soy', amount: 5, unit: 'ml', stage: 'seasoning_mix' },
+        { ingredientId: 'shaoxing_wine', amount: 15, unit: 'ml', stage: 'seasoning_mix' },
+        { ingredientId: 'potato_starch', amount: 4, unit: 'g', stage: 'slurry_gouqian' },
+        { ingredientId: 'water_stock', amount: 60, unit: 'ml', stage: 'liquid_base' }
+      ],
+      steps: (recipe.steps || []).map((st, idx) => ({
+        stepNumber: idx + 1,
+        title: `Шаг ${idx + 1}`,
+        tempLevel: 'high_wok_blast',
+        duration: '30-60 сек',
+        instruction: st,
+        biochemicalAction: 'Глазирование и раскрытие ароматических компонентов'
+      })),
+      proTips: [
+        recipe.notes || 'Перемешивайте соус перед вливанием для предотвращения оседания крахмала.',
+        'Вливайте по стенкам раскаленного вока для максимального эффекта Wok Hei.'
+      ],
+      literatureReference: recipe.sourceUrl || recipe.sourceName
+    };
+
+    setSelectedSauceForProfile(convertedSauce);
+  };
 
   useEffect(() => {
     localStorage.setItem('umami_translated_articles_v1', JSON.stringify(translatedArticles));
@@ -893,6 +994,50 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   </div>
                 </div>
 
+                {/* DEDICATED EXTRACT SAUCE PROFILE BANNER (UNDER ARTICLE) */}
+                <div className="my-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-rose-950/40 via-purple-950/30 to-amber-950/20 border border-rose-500/30 backdrop-blur-xl space-y-4 shadow-xl">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center space-x-2 text-rose-300 text-xs font-bold uppercase tracking-wider">
+                        <FlaskConical className="w-4 h-4 text-rose-400" />
+                        <span>Экстрактор соуса & Биохимический профиль</span>
+                      </div>
+                      <h3 className="text-lg font-bold font-display text-white">
+                        Создать профиль соуса из статьи «{currentTitle}»
+                      </h3>
+                      <p className="text-xs text-zinc-300 leading-relaxed font-light">
+                        ИИ выделит точные пропорции вок-соуса (Wanzhi), картофельного крахмала (Gouqian) и аминокислот на основе теоретического материала этой статьи, рассчитает синергию Ямагути и позволит мгновенно загрузить формулу в Конструктор!
+                      </p>
+                    </div>
+
+                    <button
+                      id="extract-sauce-from-article-btn"
+                      onClick={() => handleExtractSauce({
+                        sourceText: currentMarkdown || selectedArticle.markdownContent,
+                        title: currentTitle || selectedArticle.title,
+                        sourceUrl: selectedArticle.sourceUrl,
+                        type: 'article',
+                        targetId: selectedArticle.id
+                      })}
+                      disabled={isExtractingSauce}
+                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all flex items-center justify-center space-x-2 shrink-0 group"
+                    >
+                      {isExtractingSauce && extractSauceTargetId === selectedArticle.id ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                          <span>Извлечение и моделирование соуса...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-rose-200 group-hover:scale-110 transition-transform" />
+                          <span>🧪 Создать профиль соуса</span>
+                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Bottom Action */}
                 <div className="pt-6 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
                   <button
@@ -1041,7 +1186,31 @@ export const Playground: React.FC<PlaygroundProps> = ({
                             ) : (
                               <Languages className="w-3 h-3 text-rose-400" />
                             )}
-                            <span>{isRuActive ? 'RU (Оригинал)' : 'Перевести'}</span>
+                            <span>{isRuActive ? 'RU' : 'Перевести'}</span>
+                          </button>
+
+                          {/* Quick Extract Sauce Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExtractSauce({
+                                sourceText: article.markdownContent,
+                                title: article.title,
+                                sourceUrl: article.sourceUrl,
+                                type: 'article',
+                                targetId: article.id
+                              });
+                            }}
+                            disabled={isExtractingSauce && extractSauceTargetId === article.id}
+                            className="text-[10px] px-2 py-0.5 rounded-md border bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20 flex items-center space-x-1 transition-colors"
+                            title="Создать профиль соуса из этой статьи"
+                          >
+                            {isExtractingSauce && extractSauceTargetId === article.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin text-rose-400" />
+                            ) : (
+                              <FlaskConical className="w-3 h-3 text-rose-400" />
+                            )}
+                            <span>🧪 Соус</span>
                           </button>
                         </div>
 
@@ -1265,15 +1434,27 @@ export const Playground: React.FC<PlaygroundProps> = ({
                       <ExternalLink className="w-3 h-3" />
                     </a>
 
-                    <button
-                      id={`load-recipe-constructor-${recipe.id}`}
-                      onClick={() => onLoadRecipeToConstructor(recipe.parsedIngredients, displayTitle)}
-                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-rose-950/40 border border-rose-400/30 transition-all group"
-                    >
-                      <FlaskConical className="w-3.5 h-3.5 text-rose-200 group-hover:scale-110 transition-transform" />
-                      <span>Загрузить в конструктор</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        id={`open-sauce-profile-${recipe.id}`}
+                        onClick={() => handleOpenRecipeSauceProfile(recipe)}
+                        className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] hover:border-rose-500/30 text-zinc-200 hover:text-white font-medium text-xs transition-all"
+                        title="Посмотреть биохимический профиль соуса"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                        <span>🧪 Профиль соуса</span>
+                      </button>
+
+                      <button
+                        id={`load-recipe-constructor-${recipe.id}`}
+                        onClick={() => onLoadRecipeToConstructor(recipe.parsedIngredients, displayTitle)}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-rose-950/40 border border-rose-400/30 transition-all group"
+                      >
+                        <FlaskConical className="w-3.5 h-3.5 text-rose-200 group-hover:scale-110 transition-transform" />
+                        <span>В конструктор</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1400,13 +1581,22 @@ export const Playground: React.FC<PlaygroundProps> = ({
                     <span className="text-sm font-bold text-white">
                       {scrapedDataResult.recipe.title}
                     </span>
-                    <button
-                      onClick={() => onLoadRecipeToConstructor(scrapedDataResult.recipe.parsedIngredients, scrapedDataResult.recipe.title)}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm"
-                    >
-                      <FlaskConical className="w-3.5 h-3.5" />
-                      <span>Сразу загрузить в конструктор</span>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleOpenRecipeSauceProfile(scrapedDataResult.recipe)}
+                        className="px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center space-x-1.5 shadow-sm"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Профиль соуса</span>
+                      </button>
+                      <button
+                        onClick={() => onLoadRecipeToConstructor(scrapedDataResult.recipe.parsedIngredients, scrapedDataResult.recipe.title)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm"
+                      >
+                        <FlaskConical className="w-3.5 h-3.5" />
+                        <span>В конструктор</span>
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-zinc-300">
                     {scrapedDataResult.recipe.summary}
@@ -1419,21 +1609,47 @@ export const Playground: React.FC<PlaygroundProps> = ({
                   <span className="text-xs text-zinc-300 truncate max-w-md">
                     Статья: <strong className="text-white">{scrapedDataResult.article.title}</strong>
                   </span>
-                  <button
-                    onClick={() => {
-                      setSelectedArticle(scrapedDataResult.article);
-                      setSubTab('articles');
-                    }}
-                    className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center space-x-1 shrink-0"
-                  >
-                    <span>Открыть в ридере</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleExtractSauce({
+                        sourceText: scrapedDataResult.article.markdownContent,
+                        title: scrapedDataResult.article.title,
+                        sourceUrl: scrapedDataResult.sourceUrl,
+                        type: 'article'
+                      })}
+                      disabled={isExtractingSauce}
+                      className="text-xs text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 px-2.5 py-1 rounded-lg font-medium flex items-center space-x-1 shrink-0"
+                    >
+                      <FlaskConical className="w-3 h-3 text-rose-400" />
+                      <span>Извлечь соус</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedArticle(scrapedDataResult.article);
+                        setSubTab('articles');
+                      }}
+                      className="text-xs text-zinc-300 hover:text-white bg-white/[0.04] px-2.5 py-1 rounded-lg font-medium flex items-center space-x-1 shrink-0"
+                    >
+                      <span>Открыть в ридере</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
+      )}
+
+      {/* Sauce Profile Modal Inspector */}
+      {selectedSauceForProfile && (
+        <SauceProfileModal
+          sauce={selectedSauceForProfile}
+          pantryList={pantryList}
+          onClose={() => setSelectedSauceForProfile(null)}
+          onLoadToConstructor={onLoadRecipeToConstructor}
+          onSaveToDb={onSaveSauceToDb}
+        />
       )}
     </div>
   );

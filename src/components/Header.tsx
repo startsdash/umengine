@@ -90,12 +90,13 @@ sudo systemctl restart postgresql`;
 
   const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string; key: string }[] = [
     { id: 'constructor', label: 'Конструктор', icon: <FlaskConical className="w-3.5 h-3.5" />, key: '1' },
-    { id: 'library', label: 'Профили соусов', icon: <Layers className="w-3.5 h-3.5" />, badge: '7', key: '2' },
-    { id: 'playground', label: 'Playground', icon: <Globe className="w-3.5 h-3.5 text-rose-400" />, badge: 'Web', key: '3' },
-    { id: 'protocol', label: 'Вок-протокол', icon: <Flame className="w-3.5 h-3.5" />, key: '4' },
-    { id: 'pantry', label: 'Кладовая', icon: <PackageCheck className="w-3.5 h-3.5" />, badge: '28', key: '5' },
-    { id: 'science', label: 'Наука об Умами', icon: <BookOpen className="w-3.5 h-3.5" />, key: '6' },
-    { id: 'ai_synthesizer', label: 'AI Шеф-Инженер', icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />, badge: 'AI', key: '7' }
+    { id: 'protein_matrix', label: 'Матрица белка', icon: <Layers className="w-3.5 h-3.5 text-amber-400" />, badge: '18', key: '2' },
+    { id: 'library', label: 'Профили соусов', icon: <Layers className="w-3.5 h-3.5" />, badge: '7', key: '3' },
+    { id: 'playground', label: 'Playground', icon: <Globe className="w-3.5 h-3.5 text-rose-400" />, badge: 'Web', key: '4' },
+    { id: 'protocol', label: 'Вок-протокол', icon: <Flame className="w-3.5 h-3.5" />, key: '5' },
+    { id: 'pantry', label: 'Кладовая', icon: <PackageCheck className="w-3.5 h-3.5" />, badge: '28', key: '6' },
+    { id: 'science', label: 'Наука об Умами', icon: <BookOpen className="w-3.5 h-3.5" />, key: '7' },
+    { id: 'ai_synthesizer', label: 'AI Шеф-Инженер', icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />, badge: 'AI', key: '8' }
   ];
 
   return (

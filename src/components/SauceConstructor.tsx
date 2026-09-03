@@ -19,8 +19,15 @@ import {
   Activity,
   Database,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  ChefHat,
+  Dna,
+  Zap,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
+import { PROTEIN_MATRIX_ITEMS, PROTEIN_CATEGORIES, getProteinById } from '../data/proteinMatrixData';
 
 interface SauceConstructorProps {
   ingredients: RecipeIngredient[];
@@ -57,16 +64,68 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
   const [saveSummary, setSaveSummary] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [proteinCategory, setProteinCategory] = useState<string>('all');
+  const [showProteinPrepDetails, setShowProteinPrepDetails] = useState<boolean>(false);
+  const [adjustmentToast, setAdjustmentToast] = useState<string | null>(null);
 
   const pantryMap = new Map<string, PantryIngredient>();
   pantryList.forEach(p => pantryMap.set(p.id, p));
 
-  const proteins = [
-    { id: 'seitan', name: 'Сейтан', desc: 'Пшеничный глютен, требует густого Wanzhi' },
-    { id: 'doupi', name: 'Доупи', desc: 'Тофу-листы, мгновенно впитывают соус' },
-    { id: 'fuzhu', name: 'Фучжу', desc: 'Соевая спаржа / Юба, глубокое томление' },
-    { id: 'potato_carrot', name: 'Овощи', desc: 'Корнеплоды для тушения в рассоле' }
-  ];
+  // Resolve currently active protein from full database
+  const activeProtein = getProteinById(selectedProtein) || 
+    PROTEIN_MATRIX_ITEMS.find(p => p.id === selectedProtein || p.id.startsWith(selectedProtein)) ||
+    PROTEIN_MATRIX_ITEMS[0];
+
+  // Apply protein sauce adjustment formula (+starch, ±liquid)
+  const handleApplyProteinSauceAdjustment = () => {
+    if (!activeProtein) return;
+    const { starchDeltaG, liquidDeltaMl } = activeProtein.sauceAdjustment;
+
+    setIngredients(prev => {
+      const next = [...prev];
+      // Adjust Starch
+      if (starchDeltaG !== 0) {
+        const starchIdx = next.findIndex(i => i.ingredientId === 'potato_starch');
+        if (starchIdx >= 0) {
+          next[starchIdx] = {
+            ...next[starchIdx],
+            amount: Math.max(1, Math.round((next[starchIdx].amount + starchDeltaG) * 10) / 10)
+          };
+        } else if (starchDeltaG > 0) {
+          next.push({
+            ingredientId: 'potato_starch',
+            amount: Math.max(2, starchDeltaG),
+            unit: 'g',
+            stage: 'slurry_gouqian'
+          });
+        }
+      }
+      // Adjust Liquid
+      if (liquidDeltaMl !== 0) {
+        const liquidIdx = next.findIndex(i => i.ingredientId === 'water_stock');
+        if (liquidIdx >= 0) {
+          next[liquidIdx] = {
+            ...next[liquidIdx],
+            amount: Math.max(10, Math.round((next[liquidIdx].amount + liquidDeltaMl) * 10) / 10)
+          };
+        } else if (liquidDeltaMl > 0) {
+          next.push({
+            ingredientId: 'water_stock',
+            amount: liquidDeltaMl,
+            unit: 'ml',
+            stage: 'liquid_base'
+          });
+        }
+      }
+      return next;
+    });
+
+    const starchText = starchDeltaG !== 0 ? `крахмал ${starchDeltaG > 0 ? '+' : ''}${starchDeltaG} г` : '';
+    const liquidText = liquidDeltaMl !== 0 ? `бульон ${liquidDeltaMl > 0 ? '+' : ''}${liquidDeltaMl} мл` : '';
+    const details = [starchText, liquidText].filter(Boolean).join(', ');
+    setAdjustmentToast(`Соус адаптирован под «${activeProtein.name}» (${details})`);
+    setTimeout(() => setAdjustmentToast(null), 4000);
+  };
 
   // Stage details in Linear styling
   const stageMeta: Record<RecipeStage, { label: string; icon: React.ReactNode; badge: string; desc: string }> = {
@@ -174,40 +233,202 @@ export const SauceConstructor: React.FC<SauceConstructorProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Target Protein Selector (Linear Pill Matrix) */}
-      <div className="p-3 sm:p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[11px] font-mono font-medium text-zinc-400 uppercase tracking-wider">
-            Матрица белка
-          </span>
-          <span className="text-[10px] font-mono text-zinc-500">
-            {portions} порции
-          </span>
+      {/* Target Protein Selector (Interactive Multi-Category Matrix) */}
+      <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1">
+              <span>🥩</span>
+              <span>Матрица белка & Физика соуса</span>
+            </span>
+            <span className="text-[10px] font-mono text-zinc-400">
+              ({PROTEIN_MATRIX_ITEMS.length} матриц)
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-[10px] font-mono text-zinc-400">
+            <span>{portions} порции</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {proteins.map(p => {
-            const isSelected = selectedProtein === p.id;
+        {/* Protein Category Filter Pills */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setProteinCategory('all')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border shrink-0 transition-all ${
+              proteinCategory === 'all'
+                ? 'bg-white/[0.1] text-white border-white/[0.25]'
+                : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:text-white'
+            }`}
+          >
+            Все
+          </button>
+          {PROTEIN_CATEGORIES.map(cat => {
+            const isSelected = proteinCategory === cat.id;
             return (
               <button
-                key={p.id}
-                id={`protein-btn-${p.id}`}
-                onClick={() => setSelectedProtein(p.id)}
-                className={`text-left p-2.5 rounded-lg border transition-all ${
+                key={cat.id}
+                type="button"
+                onClick={() => setProteinCategory(cat.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border shrink-0 transition-all flex items-center space-x-1 ${
                   isSelected
-                    ? 'bg-white/[0.08] border-white/[0.22] text-white shadow-sm ring-1 ring-white/10'
-                    : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/[0.12] hover:text-zinc-200'
+                    ? 'bg-amber-500/20 text-amber-200 border-amber-500/40 shadow-sm'
+                    : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:text-white'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-xs text-white">{p.name}</span>
-                  {isSelected && <Check className="w-3 h-3 text-rose-400" />}
-                </div>
-                <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1">{p.desc}</p>
+                <span>{cat.iconLabel}</span>
+                <span>{cat.label}</span>
               </button>
             );
           })}
         </div>
+
+        {/* Protein Cards Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+          {PROTEIN_MATRIX_ITEMS
+            .filter(p => proteinCategory === 'all' || p.category === proteinCategory)
+            .map(p => {
+              const isSelected = activeProtein.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  id={`protein-btn-${p.id}`}
+                  onClick={() => setSelectedProtein(p.id)}
+                  className={`text-left p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-amber-500/10 border-amber-500/40 text-white shadow-sm ring-1 ring-amber-500/30'
+                      : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="font-semibold text-xs text-white leading-tight">
+                      {p.name.split(' ')[0]} {p.name.split(' ')[1] || ''}
+                    </span>
+                    {isSelected ? (
+                      <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <span className="text-[10px] text-zinc-500 shrink-0 font-mono">
+                        {p.chineseName.split(' ')[0]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] font-mono text-zinc-400 mt-1.5 pt-1 border-t border-white/[0.04]">
+                    <span>{p.dominantNucleotide !== 'none' ? `+${p.dominantNucleotide}` : 'Glu base'}</span>
+                    <span className="text-amber-400/80">{p.absorptionLabel.split(' ')[0]}</span>
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+
+        {/* Dedicated Active Protein Interaction & Telemetry Box */}
+        {activeProtein && (
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/20 via-black/40 to-rose-950/20 border border-amber-500/20 space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="font-bold text-white text-xs">
+                  Активный белок: {activeProtein.name}
+                </span>
+                <span className="font-mono text-amber-400 text-[11px]">
+                  ({activeProtein.chineseName})
+                </span>
+              </div>
+
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.05] text-amber-200 border border-amber-500/30">
+                {activeProtein.absorptionLabel}
+              </span>
+            </div>
+
+            {/* Telemetry Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono pt-1">
+              <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06]">
+                <span className="text-zinc-500 block text-[9px]">Естественный Glu:</span>
+                <strong className="text-rose-400">+{activeProtein.baselineGlutamateMg} мг/100г</strong>
+              </div>
+              <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06]">
+                <span className="text-zinc-500 block text-[9px]">Инозинат/Гуанилат:</span>
+                <strong className="text-amber-400">
+                  +{activeProtein.baselineImpMg + activeProtein.baselineGmpMg} мг ({activeProtein.dominantNucleotide})
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06]">
+                <span className="text-zinc-500 block text-[9px]">Поведение влаги:</span>
+                <strong className="text-zinc-200">
+                  {activeProtein.moistureTendency === 'releases_water' ? '💧 Отдает влагу' :
+                   activeProtein.moistureTendency === 'absorbs_liquid' ? '🧽 Жадно впитывает' : 
+                   activeProtein.moistureTendency === 'emulsifies' ? '🍳 Эмульгирует' : '⚖️ Стабильная'}
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06]">
+                <span className="text-zinc-500 block text-[9px]">Архетип соуса:</span>
+                <strong className="text-purple-300">{activeProtein.sauceAdjustment.recommendedSauceCategory}</strong>
+              </div>
+            </div>
+
+            {/* Chef Tuning Advice & One-Click Apply */}
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="text-[11px] text-amber-200 leading-snug">
+                💡 <strong className="text-white">Совет шефа: </strong>
+                {activeProtein.sauceAdjustment.chefNotes}
+              </div>
+
+              {(activeProtein.sauceAdjustment.starchDeltaG !== 0 || activeProtein.sauceAdjustment.liquidDeltaMl !== 0) && (
+                <button
+                  type="button"
+                  onClick={handleApplyProteinSauceAdjustment}
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold text-[11px] shadow-sm transition-all shrink-0 flex items-center space-x-1.5 active:scale-95"
+                  title="Автоматически скорректировать крахмал и бульон в текущем рецепте"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-200" />
+                  <span>
+                    Адаптировать соус ({activeProtein.sauceAdjustment.starchDeltaG > 0 ? `+${activeProtein.sauceAdjustment.starchDeltaG}г крахмал` : ''}{activeProtein.sauceAdjustment.liquidDeltaMl !== 0 ? `, ${activeProtein.sauceAdjustment.liquidDeltaMl > 0 ? '+' : ''}${activeProtein.sauceAdjustment.liquidDeltaMl}мл бульон` : ''})
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Collapsible Wok Prep Instructions */}
+            <div className="pt-1 border-t border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => setShowProteinPrepDetails(!showProteinPrepDetails)}
+                className="w-full flex items-center justify-between text-[11px] text-zinc-400 hover:text-white transition-colors py-1"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Китайская вок-подготовка: <strong className="text-zinc-200">{activeProtein.prepTechnique.chineseTerm} ({activeProtein.prepTechnique.name})</strong></span>
+                </div>
+                {showProteinPrepDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {showProteinPrepDetails && (
+                <div className="mt-2 p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-1.5 text-[11px] leading-relaxed animate-fade-in">
+                  <div>
+                    <strong className="text-white">Маринад: </strong>
+                    <span className="text-zinc-300">{activeProtein.prepTechnique.marinade}</span>
+                  </div>
+                  <div>
+                    <strong className="text-white">Термодинамика вока: </strong>
+                    <span className="text-amber-300 font-mono">{activeProtein.prepTechnique.thermalWokTime}</span>
+                  </div>
+                  <div className="text-zinc-400 pt-1 font-mono text-[10px]">
+                    🎯 Цель: {activeProtein.prepTechnique.biochemicalGoal}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Adjustment Toast Banner */}
+        {adjustmentToast && (
+          <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs font-medium flex items-center space-x-2 animate-fade-in shadow-md">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{adjustmentToast}</span>
+          </div>
+        )}
       </div>
 
       {/* Real-time Nucleotide Synergy & Inhibition/Enhancement Widget */}

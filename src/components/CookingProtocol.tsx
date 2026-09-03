@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CulinaryStep } from '../types';
+import { getProteinById, PROTEIN_MATRIX_ITEMS } from '../data/proteinMatrixData';
 import { 
   Flame, 
   Clock, 
@@ -10,7 +11,8 @@ import {
   ShieldAlert, 
   Thermometer, 
   Play, 
-  RotateCcw 
+  RotateCcw,
+  ChefHat
 } from 'lucide-react';
 
 interface CookingProtocolProps {
@@ -52,32 +54,22 @@ export const CookingProtocol: React.FC<CookingProtocolProps> = ({
 
   // Protein prep guide
   const getProteinPrep = (protein: string) => {
-    switch (protein) {
-      case 'seitan':
-        return {
-          title: 'Сейтан (Пшеничный глютен / 面筋)',
-          prep: 'Нарежьте ломтиками толщиной 1 см. Предварительно обжарьте на сухой сковороде или воке с 1 ч. л. масла до появления золотистой микропористой корочки. Это предотвратит разваливание и усилит впитывание крахмального Wanzhi соуса.',
-          biochem: 'Глютеновый полимер при быстрой обжарке фиксирует форму, сохраняя эластичные карманы для захвата глутамата.'
-        };
-      case 'doupi':
-        return {
-          title: 'Доупи (Тофу-листы / 豆皮)',
-          prep: 'Замочите сухие листы в теплой воде на 10 минут, аккуратно отожмите. Сверните в плотные рулеты (Doupi Juan) или нарежьте широкой лентой («лапшой»). Идеально сочетается с соусами стиля Hongshao.',
-          biochem: 'Белковые пласты сои имеют высокую удельную поверхность, поглощая жидкую фазу капиллярным методом.'
-        };
-      case 'fuzhu':
-        return {
-          title: 'Фучжу («Соевая спаржа» / 腐竹)',
-          prep: 'Замочите в холодной воде на 4-6 часов (или в теплой воде со щепоткой соли на 1.5 часа). Отожмите лишнюю влагу, нарежьте брусками по 4-5 см. Обжаривайте в воке сразу после ароматики Baoguo.',
-          biochem: 'Слоистая структура юбы удерживает взвесь соуса между волокнами.'
-        };
-      default:
-        return {
-          title: 'Овощная матрица (Картофель & Морковь)',
-          prep: 'Нарежьте ломтиками (Pian) или соломкой (Si). Картофель промойте от поверхностного крахмала, чтобы он не горел в масле.',
-          biochem: 'Крахмал картофеля медленно отдает сахара, гармонируя с соленостью соуса.'
-        };
+    const item = getProteinById(protein) || 
+      PROTEIN_MATRIX_ITEMS.find(p => p.id === protein || p.id.startsWith(protein));
+
+    if (item) {
+      return {
+        title: `${item.name} (${item.chineseName}${item.pinyin ? ` / ${item.pinyin}` : ''})`,
+        prep: `${item.prepTechnique.name}. Маринад и запечатывание: ${item.prepTechnique.marinade}. Термодинамика в воке: ${item.prepTechnique.thermalWokTime}.`,
+        biochem: `${item.prepTechnique.biochemicalGoal} Архетип абсорбции: ${item.absorptionLabel}.`
+      };
     }
+
+    return {
+      title: 'Овощная матрица (Картофель & Корнеплоды)',
+      prep: 'Нарежьте ломтиками (Pian) или соломкой (Si). Картофель промойте от поверхностного крахмала, чтобы он не горел в горячем масле вока.',
+      biochem: 'Крахмал медленно отдает сахара, гармонируя с соленостью соуса.'
+    };
   };
 
   const proteinGuide = getProteinPrep(selectedProtein);
