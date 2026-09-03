@@ -7,7 +7,7 @@ import { getDbPool, checkDbConnection, initDbSchema } from './api/_lib/db';
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Lazy initialized Gemini client
 const DEFAULT_KEY = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6IxkrKpJhYc1hyK11Y4W0Bhb4ciATE89-48f2MzzL5WFw';
