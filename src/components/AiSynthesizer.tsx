@@ -164,6 +164,7 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
           })),
           currentProfile: tasteProfile,
           targetProtein: selectedProtein,
+          validIngredientIds: pantryList.map((p: any) => p.id),
           model: selectedModel
         })
       });
@@ -465,6 +466,9 @@ export const AiSynthesizer: React.FC<AiSynthesizerProps> = ({
                     <Info className="w-2.5 h-2.5 text-amber-400" />
                     {result.note}
                   </span>
+                )}
+                {Array.isArray(result.unmatchedIngredients) && result.unmatchedIngredients.length > 0 && (
+                  <span className="font-mono text-[11px] text-amber-400 mr-2">⚠ Не сопоставлено: {result.unmatchedIngredients.map((u: any) => u.original).join(', ')}</span>
                 )}
                 <span className="font-mono text-xs text-zinc-400">{result.chineseTitle} ({result.pinyin})</span>
               </div>

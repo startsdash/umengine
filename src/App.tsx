@@ -403,6 +403,18 @@ export const App: React.FC = () => {
       {/* Footer Note */}
       <footer className="border-t border-zinc-900 py-6 px-4 text-center text-xs text-zinc-500 font-mono">
         <p>Umami Engineer · Подключено к PostgreSQL VPS (2.26.86.122:5432/umami_db) · Синергия Yamaguchi & Ninomiya</p>
+        <button
+          onClick={() => {
+            const k = window.prompt('Личный API-ключ (X-Umami-Key):', localStorage.getItem('umami_api_key') || '');
+            if (k !== null) {
+              if (k) { localStorage.setItem('umami_api_key', k); } else { localStorage.removeItem('umami_api_key'); }
+              window.location.reload();
+            }
+          }}
+          className="mt-2 text-zinc-600 hover:text-rose-400 transition-colors underline underline-offset-2"
+        >
+          Настройки доступа (API-ключ)
+        </button>
       </footer>
     </div>
   );

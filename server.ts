@@ -10,8 +10,9 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Lazy initialized Gemini client
-const DEFAULT_KEY = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6IxkrKpJhYc1hyK11Y4W0Bhb4ciATE89-48f2MzzL5WFw';
-const DEFAULT_FIRECRAWL_KEY = process.env.FIRECRAWL_API_KEY || 'fc-09ec4c1734a9468eb7bc3127362b493c';
+// Hardcoded key fallbacks removed - configure via environment only
+const DEFAULT_KEY = process.env.GEMINI_API_KEY || '';
+const DEFAULT_FIRECRAWL_KEY = process.env.FIRECRAWL_API_KEY || '';
 
 function getGeminiClient(customApiKey?: string): GoogleGenAI | null {
   const key = customApiKey || process.env.GEMINI_API_KEY || DEFAULT_KEY;
@@ -24,6 +25,38 @@ function getGeminiClient(customApiKey?: string): GoogleGenAI | null {
       }
     }
   });
+}
+
+function normalizeIngredientKey(s: any): string {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '_');
+}
+
+function validateIngredientIds(ingredients: any[], validIds: string[]): { ingredients: any[]; report: any[] } {
+  const report: any[] = [];
+  const normMap = new Map<string, string>();
+  (validIds || []).forEach(id => normMap.set(normalizeIngredientKey(id), id));
+  const out = (ingredients || []).map((item: any) => {
+    if (!item || typeof item !== 'object') return item;
+    const raw = item.ingredientId ?? item.id;
+    if (!raw) return item;
+    if (validIds.includes(raw)) return item;
+    const norm = normalizeIngredientKey(raw);
+    if (normMap.has(norm)) {
+      report.push({ original: raw, matchedTo: normMap.get(norm) });
+      return { ...item, ingredientId: normMap.get(norm) };
+    }
+    const hit = (validIds || []).find(v => {
+      const vn = normalizeIngredientKey(v);
+      return vn.includes(norm) || norm.includes(vn);
+    });
+    if (hit) {
+      report.push({ original: raw, matchedTo: hit });
+      return { ...item, ingredientId: hit };
+    }
+    report.push({ original: raw });
+    return item;
+  });
+  return { ingredients: out, report };
 }
 
 // Curated fallback models list with metadata
@@ -69,6 +102,17 @@ const CURATED_MODELS = [
 async function startServer() {
   const app = express();
   app.use(express.json());
+
+  // Personal access guard: /api/* requires X-Umami-Key (except open paths)
+  app.use((req: any, res: any, next: any) => {
+    const requiredKey = process.env.UMAMI_API_KEY;
+    if (!requiredKey) return next();
+    if (!req.path || !req.path.startsWith('/api/')) return next();
+    const openPaths = ['/api/health', '/api/db/status'];
+    if (openPaths.some(p => req.path === p || req.path.startsWith(p + '/'))) return next();
+    if (req.headers['x-umami-key'] === requiredKey) return next();
+    return res.status(401).json({ error: 'Требуется личный API-ключ (Настройки доступа в футере приложения)' });
+  });
 
   // Health endpoint
   app.get('/api/health', (req, res) => {
@@ -151,7 +195,24 @@ async function startServer() {
   // AI Umami Synthesizer Endpoint
   app.post('/api/engineer/synthesize', async (req, res) => {
     try {
-      const { userPrompt, pantryItems, currentProfile, targetProtein, model: requestedModel } = req.body;
+      const { userPrompt, pantryItems, currentProfile, targetProtein, validIngredientIds, model: requestedModel } = req.body;
+
+      const validIds: string[] = (Array.isArray(validIngredientIds) && validIngredientIds.length > 0)
+        ? validIngredientIds.map(String)
+        : (pantryItems || []).map((p: any) => p.id);
+
+      const profileJson = JSON.stringify(currentProfile ? {
+        umamiScore: currentProfile.umamiIntensityScore,
+        synergyMultiplier: currentProfile.synergyMultiplier,
+        equivalentMsgGPerDl: currentProfile.equivalentMsgConcentrationGPerDl,
+        salinityPercent: currentProfile.salinityPercent,
+        sweetnessBrix: currentProfile.sweetnessBrix,
+        acidity: currentProfile.acidityIndex,
+        heat: currentProfile.heatIndex,
+        numbing: currentProfile.numbingIndex,
+        viscosity: currentProfile.viscosityLabel,
+        nucleotidesToGlutamate: currentProfile.nucleotideToGlutamateRatio
+      } : { note: 'текущий профиль не передан' });
       const customKey = req.headers['x-gemini-api-key'] as string | undefined;
 
       const targetModel = requestedModel || 'gemini-3.7-flash';
@@ -196,6 +257,14 @@ async function startServer() {
 Используй доступные ингредиенты из кладовой пользователя:
 ${JSON.stringify(pantryItems || [])}
 
+ТЕКУЩИЙ РАСЧЁТНЫЙ ПРОФИЛЬ (детерминированный движок Yamaguchi):
+${profileJson}
+
+ПРАВИЛА:
+1. В поле "ingredientId" используй СТРОГО значения id из кладовой выше - не выдумывай новые.
+2. Работай в режиме дельт: в "biochemicalRationale" объясни, как изменится текущий профиль (что вырастет или упадёт и почему, с числами до -> после).
+3. Дозировки подбирай так, чтобы целевые вкусы достигались без перекоса солености.
+
 Целевой белок/продукт: ${targetProtein || 'Сейтан / Доупи / Фучжу'}
 Запрос пользователя: ${userPrompt || 'Создай идеальный соус'}
 
@@ -228,7 +297,13 @@ ${JSON.stringify(pantryItems || [])}
         'gemini-3.1-pro-preview'
       ].filter((m, idx, arr) => arr.indexOf(m) === idx && !m.includes('2.5') && !m.includes('2.0') && !m.includes('1.5'));
 
+      const synthesizeStartedAt = Date.now();
+      const SYNTH_DEADLINE_MS = 90000;
       for (const modelToTry of candidateModels) {
+        if (Date.now() - synthesizeStartedAt > SYNTH_DEADLINE_MS) {
+          console.warn('Model cascade deadline reached, falling back to local generator');
+          break;
+        }
         try {
           actualModelUsed = modelToTry;
           response = await ai.models.generateContent({
@@ -250,6 +325,11 @@ ${JSON.stringify(pantryItems || [])}
       if (response?.text) {
         try {
           const parsedData = JSON.parse(response.text);
+          if (Array.isArray(parsedData.ingredients) && validIds.length > 0) {
+            const v = validateIngredientIds(parsedData.ingredients, validIds);
+            parsedData.ingredients = v.ingredients;
+            if (v.report.length > 0) parsedData.unmatchedIngredients = v.report;
+          }
           parsedData.usedModel = actualModelUsed;
           return res.json(parsedData);
         } catch (parseErr) {
@@ -773,6 +853,12 @@ ${JSON.stringify(availablePantryBrief)}
 
           if (genRes?.text) {
             const parsed = JSON.parse(genRes.text);
+            const extractIds = (pantryList || []).map((p: any) => p.id);
+            if (Array.isArray(parsed.ingredients) && extractIds.length > 0) {
+              const v = validateIngredientIds(parsed.ingredients, extractIds);
+              parsed.ingredients = v.ingredients;
+              if (v.report.length > 0) parsed.unmatchedIngredients = v.report;
+            }
             return res.json({ success: true, sauceProfile: parsed });
           }
         } catch (aiErr: any) {
