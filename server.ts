@@ -1,13 +1,13 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
-// Database disabled for fast, reliable standalone deployments (Local Storage active)
+import { getDbPool, checkDbConnection, initDbSchema } from './api/_lib/db';
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Lazy initialized Gemini client
 const DEFAULT_KEY = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6IxkrKpJhYc1hyK11Y4W0Bhb4ciATE89-48f2MzzL5WFw';
@@ -855,32 +855,396 @@ ${JSON.stringify(availablePantryBrief)}
   });
 
   // ==========================================
-  // Local / Offline Storage Fallback
+  // VPS PostgreSQL Persistence Endpoints
   // ==========================================
 
-  // 1. DB Health & Status Check (Offline mode)
-  app.get('/api/db/status', (req, res) => {
-    return res.json({
-      success: true,
-      connected: false,
-      disabled: true,
-      message: 'База данных отключена (автономный режим Local Storage)',
-      host: 'Local Storage',
-      database: 'Browser Cache'
-    });
+  // Asynchronously initialize database schema in background
+  initDbSchema().catch((err) => {
+    console.warn('[VPS Postgres] Background schema init warning:', err.message);
   });
 
-  // 2. Offline Database Endpoints Fallback
-  app.all('/api/db/*', (req, res) => {
-    return res.json({
-      success: true,
-      disabled: true,
-      message: 'База данных временно отключена (используется локальное хранилище LocalStorage)'
-    });
+  // 1. DB Health & Status Check
+  app.get('/api/db/status', async (req, res) => {
+    try {
+      const status = await checkDbConnection();
+      return res.json({
+        success: true,
+        ...status
+      });
+    } catch (err: any) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: err.message || 'Ошибка подключения к PostgreSQL',
+        host: '2.26.86.122',
+        database: 'umami_db'
+      });
+    }
+  });
+
+  // 2. Custom Sauces CRUD
+  app.get('/api/db/sauces', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const result = await p.query('SELECT * FROM custom_sauces ORDER BY created_at DESC;');
+      return res.json({
+        success: true,
+        sauces: result.rows.map(r => ({
+          id: r.id,
+          title: r.title,
+          chineseTitle: r.chinese_title,
+          pinyin: r.pinyin,
+          category: r.category,
+          summary: r.summary,
+          scientificBreakdown: r.scientific_breakdown,
+          ingredients: r.ingredients,
+          steps: r.steps,
+          targetProteins: r.target_proteins,
+          tasteProfile: r.taste_profile,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at
+        }))
+      });
+    } catch (err: any) {
+      console.error('[DB Sauces GET] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/sauces', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const sauce = req.body;
+      if (!sauce || !sauce.id || !sauce.title) {
+        return res.status(400).json({ error: 'ID и название соуса обязательны' });
+      }
+
+      await p.query(`
+        INSERT INTO custom_sauces (
+          id, title, chinese_title, pinyin, category, summary, 
+          scientific_breakdown, ingredients, steps, target_proteins, taste_profile, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          chinese_title = EXCLUDED.chinese_title,
+          pinyin = EXCLUDED.pinyin,
+          category = EXCLUDED.category,
+          summary = EXCLUDED.summary,
+          scientific_breakdown = EXCLUDED.scientific_breakdown,
+          ingredients = EXCLUDED.ingredients,
+          steps = EXCLUDED.steps,
+          target_proteins = EXCLUDED.target_proteins,
+          taste_profile = EXCLUDED.taste_profile,
+          updated_at = NOW();
+      `, [
+        sauce.id,
+        sauce.title,
+        sauce.chineseTitle || null,
+        sauce.pinyin || null,
+        sauce.category || 'custom',
+        sauce.summary || null,
+        sauce.scientificBreakdown || null,
+        JSON.stringify(sauce.ingredients || []),
+        JSON.stringify(sauce.steps || []),
+        JSON.stringify(sauce.targetProteins || []),
+        sauce.tasteProfile ? JSON.stringify(sauce.tasteProfile) : null
+      ]);
+
+      return res.json({ success: true, message: 'Соус сохранен в PostgreSQL на VPS' });
+    } catch (err: any) {
+      console.error('[DB Sauces POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/db/sauces/:id', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await p.query('DELETE FROM custom_sauces WHERE id = $1;', [req.params.id]);
+      return res.json({ success: true, message: 'Соус удален' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Pantry & Inventory Sync
+  app.get('/api/db/pantry', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const result = await p.query('SELECT * FROM pantry_state;');
+      return res.json({
+        success: true,
+        pantryItems: result.rows.map(r => ({
+          id: r.id,
+          inPantry: r.in_pantry,
+          updatedAt: r.updated_at
+        }))
+      });
+    } catch (err: any) {
+      console.error('[DB Pantry GET] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/pantry', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Ожидается массив items' });
+      }
+
+      const client = await p.connect();
+      try {
+        await client.query('BEGIN');
+        for (const item of items) {
+          if (item && item.id) {
+            await client.query(`
+              INSERT INTO pantry_state (id, in_pantry, updated_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (id) DO UPDATE SET
+                in_pantry = EXCLUDED.in_pantry,
+                updated_at = NOW();
+            `, [item.id, Boolean(item.inPantry)]);
+          }
+        }
+        await client.query('COMMIT');
+        return res.json({ success: true, count: items.length });
+      } catch (e: any) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } catch (err: any) {
+      console.error('[DB Pantry POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Playground Articles Sync
+  app.get('/api/db/articles', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const result = await p.query('SELECT * FROM saved_articles ORDER BY created_at DESC;');
+      return res.json({
+        success: true,
+        articles: result.rows.map(r => ({
+          id: r.id,
+          title: r.title,
+          subtitle: r.subtitle,
+          author: r.author,
+          readTimeMinutes: r.read_time_minutes,
+          tags: r.tags,
+          summary: r.summary,
+          markdownContent: r.markdown_content,
+          keyBiochemicalTakeaways: r.key_biochemical_takeaways,
+          sourceUrl: r.source_url,
+          createdAt: r.created_at
+        }))
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/articles', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const article = req.body;
+      if (!article || !article.id || !article.title) {
+        return res.status(400).json({ error: 'Некорректная статья' });
+      }
+
+      await p.query(`
+        INSERT INTO saved_articles (
+          id, title, subtitle, author, read_time_minutes, tags, summary, markdown_content, key_biochemical_takeaways, source_url, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          subtitle = EXCLUDED.subtitle,
+          author = EXCLUDED.author,
+          read_time_minutes = EXCLUDED.read_time_minutes,
+          tags = EXCLUDED.tags,
+          summary = EXCLUDED.summary,
+          markdown_content = EXCLUDED.markdown_content,
+          key_biochemical_takeaways = EXCLUDED.key_biochemical_takeaways,
+          source_url = EXCLUDED.source_url,
+          updated_at = NOW();
+      `, [
+        article.id,
+        article.title,
+        article.subtitle || null,
+        article.author || null,
+        article.readTimeMinutes || 5,
+        JSON.stringify(article.tags || []),
+        article.summary || null,
+        article.markdownContent || '',
+        JSON.stringify(article.keyBiochemicalTakeaways || []),
+        article.sourceUrl || null
+      ]);
+
+      return res.json({ success: true, message: 'Статья сохранена в PostgreSQL' });
+    } catch (err: any) {
+      console.error('[DB Articles POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/db/articles/:id', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await p.query('DELETE FROM saved_articles WHERE id = $1;', [req.params.id]);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. Playground Recipes Sync
+  app.get('/api/db/recipes', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const result = await p.query('SELECT * FROM saved_recipes ORDER BY created_at DESC;');
+      return res.json({
+        success: true,
+        recipes: result.rows.map(r => ({
+          id: r.id,
+          title: r.title,
+          chineseTitle: r.chinese_title,
+          pinyin: r.pinyin,
+          category: r.category,
+          summary: r.summary,
+          ingredientsText: r.ingredients_text,
+          parsedIngredients: r.parsed_ingredients,
+          steps: r.steps,
+          notes: r.notes,
+          synergyEstimate: r.synergy_estimate,
+          sourceUrl: r.source_url,
+          createdAt: r.created_at
+        }))
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/recipes', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const recipe = req.body;
+      if (!recipe || !recipe.id || !recipe.title) {
+        return res.status(400).json({ error: 'Некорректный рецепт' });
+      }
+
+      await p.query(`
+        INSERT INTO saved_recipes (
+          id, title, chinese_title, pinyin, category, summary, ingredients_text, parsed_ingredients, steps, notes, synergy_estimate, source_url, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          chinese_title = EXCLUDED.chinese_title,
+          pinyin = EXCLUDED.pinyin,
+          category = EXCLUDED.category,
+          summary = EXCLUDED.summary,
+          ingredients_text = EXCLUDED.ingredients_text,
+          parsed_ingredients = EXCLUDED.parsed_ingredients,
+          steps = EXCLUDED.steps,
+          notes = EXCLUDED.notes,
+          synergy_estimate = EXCLUDED.synergy_estimate,
+          source_url = EXCLUDED.source_url,
+          updated_at = NOW();
+      `, [
+        recipe.id,
+        recipe.title,
+        recipe.chineseTitle || null,
+        recipe.pinyin || null,
+        recipe.category || 'wanzhi_brown',
+        recipe.summary || null,
+        JSON.stringify(recipe.ingredientsText || []),
+        JSON.stringify(recipe.parsedIngredients || []),
+        JSON.stringify(recipe.steps || []),
+        recipe.notes || null,
+        recipe.synergyEstimate || null,
+        recipe.sourceUrl || null
+      ]);
+
+      return res.json({ success: true, message: 'Рецепт сохранен в PostgreSQL' });
+    } catch (err: any) {
+      console.error('[DB Recipes POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/db/recipes/:id', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await p.query('DELETE FROM saved_recipes WHERE id = $1;', [req.params.id]);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 6. Translations Cache Sync
+  app.get('/api/db/translations/:key', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      const result = await p.query('SELECT translated_payload FROM translations_cache WHERE cache_key = $1;', [req.params.key]);
+      if (result.rows.length > 0) {
+        return res.json({ success: true, cached: true, translated: result.rows[0].translated_payload });
+      }
+      return res.json({ success: false, cached: false });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/translations', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      const { cacheKey, itemType, translatedPayload } = req.body;
+      if (!cacheKey || !translatedPayload) {
+        return res.status(400).json({ error: 'Некорректные параметры кэша' });
+      }
+
+      await p.query(`
+        INSERT INTO translations_cache (cache_key, item_type, translated_payload, created_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (cache_key) DO UPDATE SET
+          translated_payload = EXCLUDED.translated_payload;
+      `, [cacheKey, itemType || 'general', JSON.stringify(translatedPayload)]);
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // Vite development middleware vs production static
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -890,13 +1254,28 @@ ${JSON.stringify(availablePantryBrief)}
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Umami Engineer Server running on http://0.0.0.0:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Umami Engineer Server running on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer();
+let appPromise: Promise<any> | null = null;
+export function getApp() {
+  if (!appPromise) appPromise = startServer();
+  return appPromise;
+}
+
+if (!process.env.VERCEL) {
+  getApp();
+}
