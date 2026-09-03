@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
-import { getDbPool, checkDbConnection, initDbSchema } from './src/db/vpsPostgres';
+import { getDbPool, checkDbConnection, initDbSchema } from './api/_lib/db';
 
 dotenv.config();
 
