@@ -1,6 +1,10 @@
 {
+  "framework": "vite",
+  "cleanUrls": true,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/|assets/|favicon\\.ico|manifest\\.json|.*\\..*).*)",
+      "destination": "/index.html"
+    }
   ]
 }
