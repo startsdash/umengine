@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { getDbPool, checkDbConnection, initDbSchema } from './api/_lib/db';
@@ -1243,7 +1243,8 @@ ${JSON.stringify(availablePantryBrief)}
   });
 
   // Vite development middleware vs production static
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -1253,13 +1254,28 @@ ${JSON.stringify(availablePantryBrief)}
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Umami Engineer Server running on http://0.0.0.0:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Umami Engineer Server running on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer();
+let appPromise: Promise<any> | null = null;
+export function getApp() {
+  if (!appPromise) appPromise = startServer();
+  return appPromise;
+}
+
+if (!process.env.VERCEL) {
+  getApp();
+}
