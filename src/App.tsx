@@ -30,15 +30,33 @@ export const App: React.FC = () => {
   const [selectedProtein, setSelectedProtein] = useState<string>('doupi');
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
-  // PostgreSQL VPS Database State
-  const [dbStatus, setDbStatus] = useState<{
+  // Local Storage Database State (DB disconnected for reliable deployment)
+  const [dbStatus] = useState<{
     connected: boolean;
+    disabled?: boolean;
     host?: string;
     database?: string;
     tables?: string[];
     error?: string;
-  }>({ connected: false });
-  const [customSauces, setCustomSauces] = useState<(SauceArchetype & { createdAt?: string; updatedAt?: string })[]>([]);
+  }>({
+    connected: false,
+    disabled: true,
+    host: 'Local Storage (Офлайн)',
+    database: 'Browser Cache'
+  });
+
+  // Custom Sauces State (Loaded & saved in LocalStorage)
+  const [customSauces, setCustomSauces] = useState<(SauceArchetype & { createdAt?: string; updatedAt?: string })[]>(() => {
+    const saved = localStorage.getItem('umami_custom_sauces_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return [];
+  });
 
   // Active Recipe State (Defaulting to Classic Wanzhi Brown Sauce)
   const defaultPreset = SAUCE_PRESETS[0];
@@ -47,7 +65,7 @@ export const App: React.FC = () => {
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(defaultPreset.ingredients);
   const [steps, setSteps] = useState<CulinaryStep[]>(defaultPreset.steps);
 
-  // Pantry State (Initialized with full user inventory, with local storage and DB sync)
+  // Pantry State (Initialized with full user inventory, saved to LocalStorage)
   const [pantryList, setPantryList] = useState<PantryIngredient[]>(() => {
     const saved = localStorage.getItem('umami_pantry_v1');
     if (saved) {
@@ -60,114 +78,57 @@ export const App: React.FC = () => {
     return PANTRY_INGREDIENTS;
   });
 
-  // Fetch DB Status & Custom Sauces & Pantry from PostgreSQL VPS
-  const fetchDbData = useCallback(async () => {
+  // Save Custom Sauces to LocalStorage
+  useEffect(() => {
     try {
-      // 1. DB Health
-      const statusRes = await fetch('/api/db/status');
-      if (statusRes.ok) {
-        const statusData = await statusRes.json();
-        setDbStatus(statusData);
-      }
-
-      // 2. Custom Sauces
-      const saucesRes = await fetch('/api/db/sauces');
-      if (saucesRes.ok) {
-        const saucesData = await saucesRes.json();
-        if (Array.isArray(saucesData.sauces)) {
-          setCustomSauces(saucesData.sauces);
-        }
-      }
-
-      // 3. Cloud Pantry State
-      const pantryRes = await fetch('/api/db/pantry');
-      if (pantryRes.ok) {
-        const pantryData = await pantryRes.json();
-        const items = pantryData.pantryItems || pantryData.pantry;
-        if (Array.isArray(items) && items.length > 0) {
-          setPantryList(prev => prev.map(p => {
-            const found = items.find((it: any) => it.id === p.id);
-            return found !== undefined ? { ...p, inPantry: Boolean(found.inPantry ?? found.in_pantry) } : p;
-          }));
-        }
-      }
-    } catch (err) {
-      console.warn('PostgreSQL VPS fetch failed (will use local cache):', err);
+      localStorage.setItem('umami_custom_sauces_v1', JSON.stringify(customSauces));
+    } catch (e) {
+      console.warn('LocalStorage save failed for custom sauces:', e);
     }
-  }, []);
+  }, [customSauces]);
 
+  // Save Pantry to LocalStorage
   useEffect(() => {
-    fetchDbData();
-  }, [fetchDbData]);
-
-  // Sync Pantry to PostgreSQL and LocalStorage
-  useEffect(() => {
-    localStorage.setItem('umami_pantry_v1', JSON.stringify(pantryList));
-
-    // Debounced sync to PostgreSQL
-    const timer = setTimeout(() => {
-      fetch('/api/db/pantry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          items: pantryList.map(p => ({ id: p.id, inPantry: p.inPantry })) 
-        })
-      }).catch(err => {
-        console.warn('Failed to sync pantry to VPS DB:', err);
-      });
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    try {
+      localStorage.setItem('umami_pantry_v1', JSON.stringify(pantryList));
+    } catch (e) {
+      console.warn('LocalStorage save failed for pantry:', e);
+    }
   }, [pantryList]);
 
-  // Save Custom Sauce to VPS PostgreSQL
+  // Save Custom Sauce to LocalStorage
   const handleSaveSauceToDb = async (sauceData: Partial<SauceArchetype>): Promise<boolean> => {
     try {
-      const payload = {
+      const newSauce: SauceArchetype & { createdAt?: string; updatedAt?: string } = {
+        id: sauceData.id || `custom_sauce_${Date.now()}`,
         title: sauceData.title || recipeTitle,
+        subtitle: sauceData.subtitle || 'Пользовательский соус',
         chineseTitle: sauceData.chineseTitle || '',
         pinyin: sauceData.pinyin || '',
-        category: sauceData.category || 'custom',
+        category: (sauceData.category as any) || 'wanzhi_brown',
         summary: sauceData.summary || '',
+        defaultPortions: sauceData.defaultPortions || portions,
         ingredients: sauceData.ingredients || ingredients,
         steps: sauceData.steps || steps,
+        proTips: sauceData.proTips || ['Сохранено в локальном хранилище'],
         targetProteins: sauceData.targetProteins || [selectedProtein],
-        literatureReference: 'Umami Lab Custom Formula (VPS PostgreSQL)',
-        scientificBreakdown: sauceData.scientificBreakdown || ''
+        literatureReference: 'Umami Lab Recipe (Local Storage)',
+        scientificBreakdown: sauceData.scientificBreakdown || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      const res = await fetch('/api/db/sauces', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        if (result.sauce) {
-          setCustomSauces(prev => [result.sauce, ...prev.filter(s => s.id !== result.sauce.id)]);
-        }
-        return true;
-      }
-      return false;
+      setCustomSauces(prev => [newSauce, ...prev.filter(s => s.id !== newSauce.id)]);
+      return true;
     } catch (err) {
-      console.error('Error saving sauce to PostgreSQL:', err);
+      console.error('Error saving sauce locally:', err);
       return false;
     }
   };
 
-  // Delete Custom Sauce from VPS PostgreSQL
+  // Delete Custom Sauce from LocalStorage
   const handleDeleteCustomSauce = async (id: string) => {
-    try {
-      const res = await fetch(`/api/db/sauces?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setCustomSauces(prev => prev.filter(s => s.id !== id));
-      }
-    } catch (err) {
-      console.error('Error deleting sauce from PostgreSQL:', err);
-    }
+    setCustomSauces(prev => prev.filter(s => s.id !== id));
   };
 
   // Toggle Pantry Item Stock
@@ -259,7 +220,6 @@ export const App: React.FC = () => {
         onReset={handleReset}
         onExport={() => setShowExportModal(true)}
         dbStatus={dbStatus}
-        onRefreshDb={fetchDbData}
       />
 
       {/* Main Container */}
@@ -402,7 +362,7 @@ export const App: React.FC = () => {
 
       {/* Footer Note */}
       <footer className="border-t border-zinc-900 py-6 px-4 text-center text-xs text-zinc-500 font-mono">
-        <p>Umami Engineer · Подключено к PostgreSQL VPS (2.26.86.122:5432/umami_db) · Синергия Yamaguchi & Ninomiya</p>
+        <p>Umami Engineer · Автономный режим (Local Storage) · Синергия Yamaguchi & Ninomiya</p>
       </footer>
     </div>
   );

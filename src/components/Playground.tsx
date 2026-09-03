@@ -82,42 +82,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
     return INITIAL_PLAYGROUND_RECIPES;
   });
 
-  // Load data from VPS PostgreSQL on mount
-  useEffect(() => {
-    const loadDbData = async () => {
-      try {
-        // 1. Articles from DB
-        const artRes = await fetch('/api/db/articles');
-        if (artRes.ok) {
-          const artData = await artRes.json();
-          if (Array.isArray(artData.articles) && artData.articles.length > 0) {
-            setArticles(prev => {
-              const ids = new Set(artData.articles.map((a: any) => a.id));
-              const nonOverlapping = prev.filter(a => !ids.has(a.id));
-              return [...artData.articles, ...nonOverlapping];
-            });
-          }
-        }
-
-        // 2. Recipes from DB
-        const recRes = await fetch('/api/db/recipes');
-        if (recRes.ok) {
-          const recData = await recRes.json();
-          if (Array.isArray(recData.recipes) && recData.recipes.length > 0) {
-            setRecipes(prev => {
-              const ids = new Set(recData.recipes.map((r: any) => r.id));
-              const nonOverlapping = prev.filter(r => !ids.has(r.id));
-              return [...recData.recipes, ...nonOverlapping];
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('PostgreSQL fetch for playground failed (using cached):', e);
-      }
-    };
-    loadDbData();
-  }, []);
-
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem('umami_playground_articles_v2', JSON.stringify(articles));
@@ -376,13 +340,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
         };
 
         setArticles(prev => [newArt, ...prev.filter(a => a.sourceUrl !== newArt.sourceUrl)]);
-
-        // Persist to PostgreSQL VPS
-        fetch('/api/db/articles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newArt)
-        }).catch(e => console.warn('Failed to save article to DB:', e));
       }
 
       // If recipe found, automatically add to recipes list
@@ -430,13 +387,6 @@ export const Playground: React.FC<PlaygroundProps> = ({
         };
 
         setRecipes(prev => [newRec, ...prev.filter(r => r.sourceUrl !== newRec.sourceUrl)]);
-
-        // Persist to PostgreSQL VPS
-        fetch('/api/db/recipes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newRec)
-        }).catch(e => console.warn('Failed to save recipe to DB:', e));
       }
 
     } catch (err: any) {

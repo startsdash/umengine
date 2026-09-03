@@ -35,6 +35,7 @@ interface HeaderProps {
   onExport: () => void;
   dbStatus?: {
     connected: boolean;
+    disabled?: boolean;
     host?: string;
     database?: string;
     tables?: string[];
@@ -191,17 +192,21 @@ sudo systemctl restart postgresql`;
                 onClick={() => setShowDbInfo(!showDbInfo)}
                 id="vps-db-status-btn"
                 className={`flex items-center space-x-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-mono transition-all touch-manipulation ${
-                  dbStatus?.connected
+                  dbStatus?.disabled
+                    ? 'bg-zinc-800/80 border-zinc-700/60 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600'
+                    : dbStatus?.connected
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
                 }`}
-                title="Статус базы данных PostgreSQL на вашем VPS"
-                aria-label="Статус базы данных"
+                title={dbStatus?.disabled ? "Автономный режим: данные хранятся в Local Storage браузера" : "Статус базы данных PostgreSQL на вашем VPS"}
+                aria-label="Статус хранилища данных"
               >
                 <Database className="w-3.5 h-3.5" />
-                <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  dbStatus?.disabled ? 'bg-zinc-400' : dbStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                }`} />
                 <span className="hidden xl:inline text-[11px]">
-                  {dbStatus?.connected ? 'VPS DB Active' : 'DB Connecting'}
+                  {dbStatus?.disabled ? 'Local Storage' : dbStatus?.connected ? 'VPS DB Active' : 'DB Connecting'}
                 </span>
               </button>
 
@@ -211,49 +216,57 @@ sudo systemctl restart postgresql`;
                   <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
                     <div className="flex items-center space-x-2">
                       <Server className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-semibold text-white">PostgreSQL VPS</span>
+                      <span className="text-xs font-semibold text-white">
+                        {dbStatus?.disabled ? 'Локальное хранилище' : 'PostgreSQL VPS'}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1.5">
-                      <button
-                        onClick={handleManualRefreshDb}
-                        disabled={isRefreshingDb}
-                        className="p-1 rounded hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors"
-                        title="Проверить подключение заново"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${isRefreshingDb ? 'animate-spin text-emerald-400' : ''}`} />
-                      </button>
+                      {!dbStatus?.disabled && (
+                        <button
+                          onClick={handleManualRefreshDb}
+                          disabled={isRefreshingDb}
+                          className="p-1 rounded hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors"
+                          title="Проверить подключение заново"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isRefreshingDb ? 'animate-spin text-emerald-400' : ''}`} />
+                        </button>
+                      )}
                       <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                        dbStatus?.connected 
+                        dbStatus?.disabled
+                          ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                          : dbStatus?.connected 
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
                           : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                       }`}>
-                        {dbStatus?.connected ? 'Онлайн' : 'Не подключен'}
+                        {dbStatus?.disabled ? 'LocalStorage' : dbStatus?.connected ? 'Онлайн' : 'Не подключен'}
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-1.5 text-[11px] font-mono">
                     <div className="flex justify-between text-zinc-400">
-                      <span>Хост:</span>
-                      <span className="text-zinc-200">{dbStatus?.host || '2.26.86.122'}</span>
+                      <span>Режим:</span>
+                      <span className="text-zinc-200">{dbStatus?.disabled ? 'Автономный (Офлайн)' : 'Удаленный сервер'}</span>
                     </div>
                     <div className="flex justify-between text-zinc-400">
-                      <span>База данных:</span>
-                      <span className="text-zinc-200">{dbStatus?.database || 'umami_db'}</span>
+                      <span>Хранилище:</span>
+                      <span className="text-zinc-200">{dbStatus?.database || 'Browser Cache'}</span>
                     </div>
                     <div className="flex justify-between text-zinc-400">
                       <span>Синхронизация:</span>
                       <span className="text-emerald-400">Рецепты, Кладовая, Статьи</span>
                     </div>
-                    {dbStatus?.tables && dbStatus.tables.length > 0 && (
-                      <div className="pt-1 text-[10px] text-zinc-400 border-t border-white/[0.04]">
-                        Таблицы: <span className="text-emerald-300 font-mono">{dbStatus.tables.join(', ')}</span>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Error diagnosis block if not connected */}
-                  {!dbStatus?.connected && (
+                  {/* Mode explanation for disabled state */}
+                  {dbStatus?.disabled && (
+                    <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300 leading-relaxed font-sans">
+                      База данных временно отключена для стабильного деплоя. Все рецепты, соусы и состояние кладовой мгновенно и безопасно сохраняются в локальной памяти вашего браузера (LocalStorage).
+                    </div>
+                  )}
+
+                  {/* Error diagnosis block if not connected and not disabled */}
+                  {!dbStatus?.connected && !dbStatus?.disabled && (
                     <div className="space-y-2 pt-1 border-t border-white/[0.06]">
                       <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-start space-x-2">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
