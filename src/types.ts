@@ -196,4 +196,4 @@ export interface ProteinMatrixItem {
   scientificNotes: string;
 }
 
-export type ActiveTab = 'constructor' | 'protein_matrix' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol' | 'playground';
+export type ActiveTab = 'constructor' | 'protein_matrix' | 'library' | 'pantry' | 'science' | 'ai_synthesizer' | 'protocol' | 'playground' | 'optimizer';

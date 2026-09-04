@@ -22,6 +22,7 @@ import { AiSynthesizer } from './components/AiSynthesizer';
 import { Playground } from './components/Playground';
 import { LabExportModal } from './components/LabExportModal';
 import { ProteinMatrixExplorer } from './components/ProteinMatrixExplorer';
+import { SauceOptimizer } from './components/SauceOptimizer';
 
 export const App: React.FC = () => {
   // Navigation State
@@ -202,6 +203,14 @@ export const App: React.FC = () => {
     setActiveTab('constructor');
   };
 
+  // Handle Optimizer Recipe Application
+  const handleApplyOptimized = (optimizedIngredients: RecipeIngredient[], title: string) => {
+    setActivePresetId('optimized_' + Date.now());
+    setRecipeTitle(title);
+    setIngredients(optimizedIngredients);
+    setActiveTab('constructor');
+  };
+
   // Handle Loading Recipe from Playground to Constructor
   const handleLoadPlaygroundRecipe = (loadedIngredients: RecipeIngredient[], title: string) => {
     setActivePresetId('scraped_' + Date.now());
@@ -370,6 +379,20 @@ export const App: React.FC = () => {
         {activeTab === 'science' && (
           <div className="max-w-4xl mx-auto animate-fade-in">
             <ScienceCompendium />
+          </div>
+        )}
+
+        {/* TAB: SAUCE OPTIMIZER */}
+        {activeTab === 'optimizer' && (
+          <div className="animate-fade-in">
+            <SauceOptimizer
+              pantryList={pantryList}
+              currentProfile={tasteProfile}
+              currentIngredients={ingredients}
+              currentTitle={recipeTitle}
+              selectedProtein={selectedProtein}
+              onApplyRecipe={handleApplyOptimized}
+            />
           </div>
         )}
 
