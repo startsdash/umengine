@@ -23,6 +23,7 @@ import { Playground } from './components/Playground';
 import { LabExportModal } from './components/LabExportModal';
 import { ProteinMatrixExplorer } from './components/ProteinMatrixExplorer';
 import { SauceOptimizer } from './components/SauceOptimizer';
+import { TasteJournal } from './components/TasteJournal';
 
 export const App: React.FC = () => {
   // Navigation State
@@ -154,7 +155,8 @@ export const App: React.FC = () => {
         steps: sauceData.steps || steps,
         targetProteins: sauceData.targetProteins || [selectedProtein],
         literatureReference: 'Umami Lab Custom Formula (VPS PostgreSQL)',
-        scientificBreakdown: sauceData.scientificBreakdown || ''
+        scientificBreakdown: sauceData.scientificBreakdown || '',
+        tasteProfile: tasteProfile
       };
 
       const res = await fetch('/api/db/sauces', {
@@ -434,6 +436,21 @@ export const App: React.FC = () => {
           <div className="animate-fade-in">
             <SauceOptimizer
               pantryList={pantryList}
+              currentProfile={tasteProfile}
+              currentIngredients={ingredients}
+              currentTitle={recipeTitle}
+              selectedProtein={selectedProtein}
+              onApplyRecipe={handleApplyOptimized}
+            />
+          </div>
+        )}
+
+        {/* TAB: TASTE JOURNAL */}
+        {activeTab === 'journal' && (
+          <div className="animate-fade-in">
+            <TasteJournal
+              pantryList={pantryList}
+              customSauces={customSauces}
               currentProfile={tasteProfile}
               currentIngredients={ingredients}
               currentTitle={recipeTitle}

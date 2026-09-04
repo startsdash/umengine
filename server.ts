@@ -1040,6 +1040,28 @@ ${JSON.stringify(availablePantryBrief)}
         sauce.tasteProfile ? JSON.stringify(sauce.tasteProfile) : null
       ]);
 
+      // Version history snapshot (Stage 4: Cook's Memory)
+      try {
+        const vRes = await p.query('SELECT COUNT(*)::int AS cnt FROM sauce_versions WHERE sauce_id = $1;', [sauce.id]);
+        const nextVersion = (vRes.rows[0]?.cnt || 0) + 1;
+        await p.query(`
+          INSERT INTO sauce_versions (id, sauce_id, version, title, payload)
+          VALUES ($1, $2, $3, $4, $5::jsonb);
+        `, [
+          sauce.id + '_v' + nextVersion + '_' + Date.now().toString(36),
+          sauce.id, nextVersion, sauce.title,
+          JSON.stringify({
+            title: sauce.title,
+            ingredients: sauce.ingredients || [],
+            steps: sauce.steps || [],
+            tasteProfile: sauce.tasteProfile || null,
+            savedAt: new Date().toISOString()
+          })
+        ]);
+      } catch (verr: any) {
+        console.warn('[DB Sauces POST] Version snapshot failed:', verr.message);
+      }
+
       return res.json({ success: true, message: 'Соус сохранен в PostgreSQL на VPS' });
     } catch (err: any) {
       console.error('[DB Sauces POST] Error:', err.message);
@@ -1113,6 +1135,109 @@ ${JSON.stringify(availablePantryBrief)}
       }
     } catch (err: any) {
       console.error('[DB Pantry POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== Stage 4: Tasting notes =====
+  app.get('/api/db/notes', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const sauceId = req.query.sauceId ? String(req.query.sauceId) : null;
+      const result = sauceId
+        ? await p.query('SELECT * FROM tasting_notes WHERE sauce_id = $1 ORDER BY created_at DESC;', [sauceId])
+        : await p.query('SELECT * FROM tasting_notes ORDER BY created_at DESC;');
+      return res.json({
+        success: true,
+        notes: result.rows.map(r => ({
+          id: r.id,
+          sauceId: r.sauce_id,
+          sauceTitle: r.sauce_title,
+          protein: r.protein,
+          portions: r.portions,
+          notes: r.notes,
+          ratings: r.ratings,
+          tasteProfile: r.taste_profile,
+          createdAt: r.created_at
+        }))
+      });
+    } catch (err: any) {
+      console.error('[DB Notes GET] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/notes', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const n = req.body || {};
+      if (!n.notes || !String(n.notes).trim()) {
+        return res.status(400).json({ error: 'Текст дегустационной заметки обязателен' });
+      }
+      const id = 'note_' + Date.now().toString(36);
+      await p.query(`
+        INSERT INTO tasting_notes (id, sauce_id, sauce_title, protein, portions, notes, ratings, taste_profile)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb);
+      `, [
+        id,
+        n.sauceId || null,
+        n.sauceTitle || 'Без названия',
+        n.protein || null,
+        Number(n.portions) || 2,
+        String(n.notes),
+        JSON.stringify(n.ratings || {}),
+        n.tasteProfile ? JSON.stringify(n.tasteProfile) : null
+      ]);
+      return res.json({ success: true, id });
+    } catch (err: any) {
+      console.error('[DB Notes POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/db/notes', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      const id = String(req.query.id || '');
+      if (!id) return res.status(400).json({ error: 'Требуется параметр id' });
+      await p.query('DELETE FROM tasting_notes WHERE id = $1;', [id]);
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[DB Notes DELETE] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== Stage 4: Sauce version history =====
+  app.get('/api/db/versions', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const sauceId = String(req.query.sauceId || '');
+      if (!sauceId) return res.status(400).json({ error: 'Требуется параметр sauceId' });
+      const result = await p.query(
+        'SELECT * FROM sauce_versions WHERE sauce_id = $1 ORDER BY version DESC LIMIT 50;',
+        [sauceId]
+      );
+      return res.json({
+        success: true,
+        versions: result.rows.map(r => ({
+          id: r.id,
+          sauceId: r.sauce_id,
+          version: r.version,
+          title: r.title,
+          payload: r.payload,
+          createdAt: r.created_at
+        }))
+      });
+    } catch (err: any) {
+      console.error('[DB Versions GET] Error:', err.message);
       return res.status(500).json({ error: err.message });
     }
   });

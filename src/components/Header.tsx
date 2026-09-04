@@ -7,6 +7,7 @@ import {
    PackageCheck, 
    Sparkles, 
    SlidersHorizontal,
+   NotebookPen,
    Share2, 
    RotateCcw,
    Layers,
@@ -98,7 +99,8 @@ sudo systemctl restart postgresql`;
     { id: 'pantry', label: 'Кладовая', icon: <PackageCheck className="w-3.5 h-3.5" />, badge: '28', key: '6' },
     { id: 'science', label: 'Наука об Умами', icon: <BookOpen className="w-3.5 h-3.5" />, key: '7' },
     { id: 'ai_synthesizer', label: 'AI Шеф-Инженер', icon: <Sparkles className="w-3.5 h-3.5 text-rose-400" />, badge: 'AI', key: '8' },
-    { id: 'optimizer', label: 'Оптимизатор', icon: <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />, badge: '★', key: '9' }
+    { id: 'optimizer', label: 'Оптимизатор', icon: <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />, badge: '★', key: '9' },
+    { id: 'journal', label: 'Дневник', icon: <NotebookPen className="w-3.5 h-3.5 text-emerald-400" />, key: '10' }
   ];
 
   return (

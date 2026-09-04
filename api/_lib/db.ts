@@ -232,6 +232,31 @@ export async function initDbSchema(): Promise<boolean> {
       CREATE INDEX IF NOT EXISTS idx_saved_recipes_created ON saved_recipes (created_at DESC);
     `);
 
+    // ===== Stage 4: Cook's Memory =====
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tasting_notes (
+        id VARCHAR(64) PRIMARY KEY,
+        sauce_id VARCHAR(128),
+        sauce_title TEXT,
+        protein VARCHAR(64),
+        portions INT DEFAULT 2,
+        notes TEXT,
+        ratings JSONB DEFAULT '{}'::jsonb,
+        taste_profile JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS sauce_versions (
+        id VARCHAR(160) PRIMARY KEY,
+        sauce_id VARCHAR(128) NOT NULL,
+        version INT NOT NULL,
+        title TEXT,
+        payload JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_tasting_notes_created ON tasting_notes (created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_sauce_versions_sauce ON sauce_versions (sauce_id, version DESC);
+    `);
+
     console.log('[VPS Postgres] All database tables initialized successfully!');
     isInitialized = true;
     return true;
