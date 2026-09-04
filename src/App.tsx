@@ -92,6 +92,26 @@ export const App: React.FC = () => {
           }));
         }
       }
+
+      // 4. Custom ingredients & value overrides from PostgreSQL
+      const ciRes = await fetch('/api/db/custom-ingredients');
+      if (ciRes.ok) {
+        const ciData = await ciRes.json();
+        if (Array.isArray(ciData.customIngredients) && ciData.customIngredients.length > 0) {
+          setPantryList(prev => {
+            const next = [...prev];
+            for (const ci of ciData.customIngredients) {
+              const idx = next.findIndex((p: PantryIngredient) => p.id === ci.id);
+              if (idx >= 0) {
+                next[idx] = { ...next[idx], ...ci, inPantry: Boolean(ci.inPantry ?? next[idx].inPantry) };
+              } else {
+                next.push({ ...ci, custom: true } as PantryIngredient);
+              }
+            }
+            return next;
+          });
+        }
+      }
     } catch (err) {
       console.warn('PostgreSQL VPS fetch failed (will use local cache):', err);
     }
@@ -169,6 +189,31 @@ export const App: React.FC = () => {
     } catch (err) {
       console.error('Error deleting sauce from PostgreSQL:', err);
     }
+  };
+
+  // Save Custom Ingredient (new or override of base item)
+  const handleSaveCustomIngredient = (ing: PantryIngredient) => {
+    setPantryList(prev => {
+      const idx = prev.findIndex(p => p.id === ing.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = ing;
+        return next;
+      }
+      return [...prev, { ...ing, custom: true }];
+    });
+    fetch('/api/db/custom-ingredients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ingredient: ing })
+    }).catch(err => console.warn('Failed to save custom ingredient:', err));
+  };
+
+  // Delete Custom Ingredient (only custom rows)
+  const handleDeleteCustomIngredient = (id: string) => {
+    setPantryList(prev => prev.filter(p => p.id !== id));
+    fetch(`/api/db/custom-ingredients?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      .catch(err => console.warn('Failed to delete custom ingredient:', err));
   };
 
   // Toggle Pantry Item Stock
@@ -371,6 +416,8 @@ export const App: React.FC = () => {
             <PantryManager
               pantryList={pantryList}
               onTogglePantryItem={handleTogglePantryItem}
+              onSaveCustomIngredient={handleSaveCustomIngredient}
+              onDeleteCustomIngredient={handleDeleteCustomIngredient}
             />
           </div>
         )}

@@ -36,6 +36,8 @@ export interface PantryIngredient {
   inPantry: boolean;
   scientificNotes: string;
   culinaryRole: string;
+  dataSource?: string;
+  custom?: boolean;
 }
 
 export type RecipeStage = 

@@ -1117,6 +1117,64 @@ ${JSON.stringify(availablePantryBrief)}
     }
   });
 
+  // ===== Custom ingredients & value overrides (personal DB layer) =====
+  app.get('/api/db/custom-ingredients', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const result = await p.query("SELECT id, custom_ingredients FROM pantry_state WHERE custom_ingredients IS NOT NULL AND custom_ingredients::text != '[]';");
+      return res.json({
+        success: true,
+        customIngredients: result.rows.map(r => ({
+          ...(r.custom_ingredients || {}),
+          id: r.id
+        }))
+      });
+    } catch (err: any) {
+      console.error('[DB CustomIngredients GET] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/custom-ingredients', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      await initDbSchema();
+      const { ingredient } = req.body || {};
+      if (!ingredient || typeof ingredient.id !== 'string' || !ingredient.id) {
+        return res.status(400).json({ error: 'Требуется ingredient.id' });
+      }
+      await p.query(`
+        INSERT INTO pantry_state (id, in_pantry, custom_ingredients, updated_at)
+        VALUES ($1, $2, $3::jsonb, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          in_pantry = EXCLUDED.in_pantry,
+          custom_ingredients = EXCLUDED.custom_ingredients,
+          updated_at = NOW();
+      `, [ingredient.id, ingredient.inPantry !== false, JSON.stringify(ingredient)]);
+      return res.json({ success: true, ingredient });
+    } catch (err: any) {
+      console.error('[DB CustomIngredients POST] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/db/custom-ingredients', async (req, res) => {
+    const p = getDbPool();
+    if (!p) return res.status(503).json({ error: 'База данных не настроена' });
+    try {
+      const id = String(req.query.id || '');
+      if (!id) return res.status(400).json({ error: 'Требуется параметр id' });
+      await p.query('DELETE FROM pantry_state WHERE id = $1;', [id]);
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('[DB CustomIngredients DELETE] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // 4. Playground Articles Sync
   app.get('/api/db/articles', async (req, res) => {
     const p = getDbPool();
